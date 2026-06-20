@@ -1,0 +1,104 @@
+/* lazygit 風: 左に積んだパネル + 右に大きな本文。フォーカス中のパネルを強調。 */
+
+#body {
+	height: 1fr;
+}
+
+#left {
+	width: 38%;
+	min-width: 28;
+	height: 1fr;
+}
+
+#problems-panel {
+	height: 1fr;
+	border: round $primary;
+	border-title-align: left;
+	padding: 0 1;
+}
+
+#results-panel {
+	height: 40%;
+	min-height: 8;
+	border: round $primary;
+	border-title-align: left;
+}
+
+#statement-panel {
+	width: 1fr;
+	height: 1fr;
+	border: round $primary;
+	border-title-align: left;
+	padding: 0 1;
+}
+
+/* フォーカス中のパネルをアクセントカラーで縁取る (lazygit のアクティブ枠)。 */
+#problems-panel:focus-within,
+#results-panel:focus-within,
+#statement-panel:focus-within {
+	border: round $accent;
+}
+
+#contest-input {
+	margin-bottom: 1;
+	border: tall $primary-darken-2;
+}
+
+#problem-list {
+	height: 1fr;
+	background: transparent;
+}
+
+#statement-md {
+	height: auto;
+}
+
+/* モーダル共通 */
+ModalScreen {
+	align: center middle;
+}
+
+#login-dialog,
+#confirm-dialog,
+#prompt-dialog,
+#submit-dialog {
+	width: 64;
+	height: auto;
+	max-height: 80%;
+	padding: 1 2;
+	border: thick $accent;
+	background: $surface;
+}
+
+#submit-dialog {
+	width: 76;
+}
+
+.dialog-title {
+	text-style: bold;
+	margin-bottom: 1;
+	width: 1fr;
+	content-align: left middle;
+}
+
+.dialog-buttons {
+	height: auto;
+	align-horizontal: right;
+	margin-top: 1;
+}
+
+.dialog-buttons Button {
+	margin-left: 2;
+}
+
+.dialog-field {
+	margin-bottom: 1;
+}
+
+#submit-preview {
+	height: auto;
+	max-height: 12;
+	border: round $primary-darken-2;
+	padding: 0 1;
+	margin-top: 1;
+}

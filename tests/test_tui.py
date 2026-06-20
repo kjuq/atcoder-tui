@@ -1,0 +1,149 @@
+"""Textual の run_test を使った TUI のヘッドレス動作確認。"""
+
+from __future__ import annotations
+
+import asyncio
+from unittest.mock import patch
+
+from textual.widgets import Input, ListView, Markdown
+
+from atcoder_cli.models import Problem, ProblemSummary, Sample
+from atcoder_cli.tui.app import AtcoderApp
+from atcoder_cli.tui.widgets import ProblemItem
+
+
+class FakeClient:
+	"""ネットワークに出ないテスト用クライアント。"""
+
+	def is_logged_in(self) -> bool:
+		return False
+
+	def get_task_list(self, contest_id: str) -> list[ProblemSummary]:
+		return [
+			ProblemSummary(contest_id, "abc086_a", "A", "Product", "https://x/a"),
+			ProblemSummary(contest_id, "abc086_b", "B", "1 21", "https://x/b"),
+		]
+
+	def get_problem(
+		self, contest_id: str, task_id: str, *, prefer_lang: str = "ja"
+	) -> Problem:
+		return Problem(
+			contest_id=contest_id,
+			task_id=task_id,
+			index="A",
+			title="Product",
+			url="https://x/a",
+			time_limit="2 sec",
+			memory_limit="256 MiB",
+			samples=[Sample(1, "3 4\n", "Even\n")],
+			statement_html="<h3>問題文</h3><p>テスト</p>",
+		)
+
+
+async def _wait_until(app: AtcoderApp, pilot, predicate, *, tries: int = 40) -> bool:
+	for _ in range(tries):
+		if predicate():
+			return True
+		await pilot.pause(0.05)
+	return predicate()
+
+
+def test_app_layout_and_flow() -> None:
+	async def scenario() -> None:
+		app = AtcoderApp(client=FakeClient())
+		async with app.run_test() as pilot:
+			# 3 パネルが構築されている。
+			assert app.query_one("#problems-panel")
+			assert app.query_one("#results-panel")
+			assert app.query_one("#statement-panel")
+
+			# 初期表示はウェルカム (ヘルプ)。
+			md = app.query_one("#statement-md", Markdown)
+			assert "atcoder-cli" in md.source
+
+			# コンテストID を入力して問題一覧を読み込む。
+			contest = app.query_one("#contest-input", Input)
+			contest.focus()
+			await pilot.press(*"abc086")
+			await pilot.press("enter")
+			assert await _wait_until(app, pilot, lambda: len(app.problems) == 2)
+
+			listview = app.query_one("#problem-list", ListView)
+			items = list(listview.query(ProblemItem))
+			assert len(items) == 2
+
+			# 先頭の問題を開く。
+			listview.focus()
+			listview.index = 0
+			await pilot.press("enter")
+			assert await _wait_until(
+				app, pilot, lambda: app.current_problem is not None
+			)
+			assert app.current_problem.title == "Product"
+			assert "Product" in md.source
+
+			# サンプルが結果パネルに反映される。
+			assert app.results.row_count == 1
+
+			# フォーカス系・ヘルプのアクションがクラッシュしない。
+			await pilot.press("2")
+			await pilot.press("3")
+			await pilot.press("1")
+			app.action_help()
+			await pilot.pause()
+
+			# j/k はパネル内移動: 問題一覧で上下に動く。
+			listview.focus()
+			listview.index = 0
+			await pilot.press("j")
+			assert listview.index == 1
+			await pilot.press("k")
+			assert listview.index == 0
+
+			# h/l はパネル間移動 (lazygit 風)。
+			results = app.query_one("#results-panel")
+			statement = app.query_one("#statement-panel")
+			listview.focus()
+			await pilot.press("l")
+			assert app.focused is results
+			await pilot.press("l")
+			assert app.focused is statement
+			await pilot.press("l")
+			assert app.focused is listview
+			await pilot.press("h")
+			assert app.focused is statement
+
+			# `/` で検索 (contest 入力) にフォーカスする。
+			await pilot.press("slash")
+			assert app.focused is contest
+
+			# Tab はパネルのみを巡回し、検索ウィンドウはスキップする。
+			listview.focus()
+			await pilot.press("tab")
+			assert app.focused is results
+			await pilot.press("tab")
+			assert app.focused is statement
+			await pilot.press("tab")
+			assert app.focused is listview
+			# 1 周しても contest 入力には戻らない。
+			assert app.focused is not contest
+
+			# r で現在の問題をブラウザで開く。
+			with patch("webbrowser.open") as mock_open:
+				listview.focus()
+				await pilot.press("r")
+				assert await _wait_until(app, pilot, lambda: mock_open.called)
+				mock_open.assert_called_once_with("https://x/a")
+
+			# L (大文字) でログイン画面 (Cookie 貼り付け) が開く。
+			await pilot.press("L")
+			assert await _wait_until(
+				app, pilot, lambda: app.screen is not app.screen_stack[0]
+			)
+			assert app.screen.__class__.__name__ == "CookieLoginScreen"
+			await pilot.press("escape")
+
+	with patch(
+		"atcoder_cli.tui.app.html_to_markdown", return_value="変換済み本文"
+	):
+		asyncio.run(scenario())

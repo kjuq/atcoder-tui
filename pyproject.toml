@@ -1,0 +1,34 @@
+[project]
+name = "atcoder-cli"
+version = "0.1.0"
+description = "A lazygit-style TUI for browsing, testing, and submitting AtCoder problems."
+readme = "README.md"
+authors = [
+    { name = "kjuq", email = "44694396+kjuq@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "lxml>=6.1.1",
+    "platformdirs>=4.10.0",
+    "pylatexenc>=2.10",
+    "requests>=2.34.2",
+    "textual>=8.2.7",
+]
+
+[project.scripts]
+atcoder-cli = "atcoder_cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.19,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+# TestStatus 等のドメインクラスをテストとして誤収集しないよう、関数ベースのみに限定。
+python_classes = []
+testpaths = ["tests"]
