@@ -1,5 +1,7 @@
 # atcoder-cli
 
+!! **CAUTION: このソフトウェアは開発途中です。使用して生じた何如なる問題について責任を持ちません。特にコンテスト本番での使用は避けるようお願いします** !!
+
 AtCoder の問題を閲覧・テスト・提出できる lazygit 風の TUI ツールです。Python + [Textual](https://textual.textualize.io/) 製。
 
 問題ページ (HTML) は [defuddle](https://github.com/kepano/defuddle) で Markdown に変換して表示します。
