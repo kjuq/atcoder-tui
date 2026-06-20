@@ -6,10 +6,10 @@ from pathlib import Path
 
 import platformdirs
 
-APP_NAME = "atcoder-cli"
+APP_NAME = "atcoder-tui"
 
 # AtCoder へ送る User-Agent。問い合わせ先が分かる形にしておく。
-USER_AGENT = "atcoder-cli (Textual TUI; +https://github.com/kjuq/atcoder-cli)"
+USER_AGENT = "atcoder-tui (Textual TUI; +https://github.com/kjuq/atcoder-tui)"
 
 # 連続リクエストの最小間隔 (秒)。サーバ負荷への配慮。
 REQUEST_INTERVAL = 0.4
@@ -28,3 +28,8 @@ def config_dir() -> Path:
 def session_path() -> Path:
 	"""ログインセッション (cookie jar) の保存先。"""
 	return config_dir() / "session.txt"
+
+
+def contests_cache_path() -> Path:
+	"""コンテスト一覧のキャッシュ (JSON) の保存先。"""
+	return config_dir() / "contests.json"

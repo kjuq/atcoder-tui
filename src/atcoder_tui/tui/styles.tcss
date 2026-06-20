@@ -39,11 +39,6 @@
 	border: round $accent;
 }
 
-#contest-input {
-	margin-bottom: 1;
-	border: tall $primary-darken-2;
-}
-
 #problem-list {
 	height: 1fr;
 	background: transparent;
@@ -72,6 +67,35 @@ ModalScreen {
 
 #submit-dialog {
 	width: 76;
+}
+
+#contest-dialog {
+	width: 90%;
+	height: 80%;
+	padding: 1 2;
+	border: thick $accent;
+	background: $surface;
+}
+
+#contest-filter {
+	margin-bottom: 1;
+}
+
+#contest-list {
+	height: 1fr;
+	border: round $primary-darken-2;
+}
+
+#contest-count {
+	height: 1;
+	color: $text-muted;
+	margin-top: 1;
+}
+
+#contest-hint {
+	height: 1;
+	color: $text-muted;
+	text-style: dim;
 }
 
 .dialog-title {

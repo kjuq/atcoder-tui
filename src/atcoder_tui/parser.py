@@ -11,7 +11,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
 
-from .models import Language, Problem, ProblemSummary, Sample, Submission
+from .models import Contest, Language, Problem, ProblemSummary, Sample, Submission
 
 BASE_URL = "https://atcoder.jp"
 
@@ -32,6 +32,56 @@ def parse_csrf_token(html: str) -> str | None:
 		if isinstance(value, str) and value:
 			return value
 	return None
+
+
+def parse_archive_last_page(html: str) -> int:
+	"""コンテストアーカイブのページネーションから最終ページ番号を得る。
+
+	ページリンクは ``...&amp;page=29`` のように現れるため、page=N を直接拾う。
+	"""
+	pages = [int(m) for m in re.findall(r"page=(\d+)", html)]
+	return max(pages) if pages else 1
+
+
+def parse_contest_archive(html: str) -> list[Contest]:
+	"""コンテストアーカイブ 1 ページ分から Contest のリストを作る。"""
+	soup = make_soup(html)
+	contests: list[Contest] = []
+	table = soup.find("table")
+	if not isinstance(table, Tag):
+		return contests
+	body = table.find("tbody")
+	rows = body.find_all("tr") if isinstance(body, Tag) else table.find_all("tr")
+	for tr in rows:
+		# コンテストへのリンク (timeanddate 等の外部リンクは除外)。
+		link = None
+		for a in tr.find_all("a"):
+			href = a.get("href", "")
+			if href.startswith("/contests/") and "/archive" not in href:
+				link = a
+				break
+		if link is None:
+			continue
+		href = link.get("href", "")
+		contest_id = href.rstrip("/").rsplit("/", 1)[-1]
+		title = link.get_text(strip=True)
+		tds = tr.find_all("td")
+		time_el = tr.find("time")
+		if isinstance(time_el, Tag):
+			start = time_el.get_text(strip=True)
+		else:
+			start = tds[0].get_text(strip=True) if tds else ""
+		rated = tds[3].get_text(strip=True) if len(tds) > 3 else ""
+		contests.append(
+			Contest(
+				id=contest_id,
+				title=title,
+				start_time=start,
+				rated=rated,
+				url=urljoin(BASE_URL, href),
+			)
+		)
+	return contests
 
 
 def parse_task_list(html: str, contest_id: str) -> list[ProblemSummary]:

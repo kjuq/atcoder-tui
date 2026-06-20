@@ -1,4 +1,4 @@
-"""atcoder-cli で扱うドメインモデル群。"""
+"""atcoder-tui で扱うドメインモデル群。"""
 
 from __future__ import annotations
 
@@ -13,6 +13,17 @@ class Sample:
 	index: int
 	input: str
 	output: str
+
+
+@dataclass(frozen=True)
+class Contest:
+	"""コンテストアーカイブに並ぶ 1 コンテストの概要。"""
+
+	id: str
+	title: str
+	start_time: str
+	rated: str
+	url: str
 
 
 @dataclass(frozen=True)

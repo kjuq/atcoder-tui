@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from atcoder_cli.client import SESSION_COOKIE, AtCoderClient, LoginError
+from atcoder_tui.client import SESSION_COOKIE, AtCoderClient, LoginError
 
 
 def _client(tmp_path: Path) -> AtCoderClient:

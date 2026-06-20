@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from atcoder_cli import parser
+from atcoder_tui import parser
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -21,6 +21,24 @@ def test_parse_csrf_token() -> None:
 	token = parser.parse_csrf_token(_read("sample_task.html"))
 	assert token is not None
 	assert len(token) > 0
+
+
+def test_parse_contest_archive() -> None:
+	html = _read("sample_archive.html")
+	contests = parser.parse_contest_archive(html)
+	assert len(contests) == 4
+	ids = [c.id for c in contests]
+	assert ids == ["demo102", "demo101", "demo100", "demoreg050"]
+	first = contests[0]
+	assert first.title == "Demo Beginner Contest 102"
+	assert first.rated == "~ 1999"
+	assert first.start_time == "2024-06-01 21:00:00+0900"
+	assert first.url.endswith("/contests/demo102")
+
+
+def test_parse_archive_last_page() -> None:
+	html = _read("sample_archive.html")
+	assert parser.parse_archive_last_page(html) == 3
 
 
 def test_parse_task_list() -> None:

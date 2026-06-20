@@ -5,8 +5,8 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-from atcoder_cli.models import Sample, TestStatus
-from atcoder_cli.tester import parse_time_limit, run_samples
+from atcoder_tui.models import Sample, TestStatus
+from atcoder_tui.tester import parse_time_limit, run_samples
 
 
 def _write(tmp_path: Path, code: str) -> Path:

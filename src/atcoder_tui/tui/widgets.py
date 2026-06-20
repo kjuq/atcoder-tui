@@ -8,7 +8,7 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.widgets import DataTable, Label, ListItem, ListView, Markdown
 
-from ..models import Problem, ProblemSummary, Sample, TestResult, TestStatus
+from ..models import Contest, Problem, ProblemSummary, Sample, TestResult, TestStatus
 
 # 判定ごとの表示色。
 _STATUS_COLOR: dict[TestStatus, str] = {
@@ -26,6 +26,15 @@ class ProblemItem(ListItem):
 	def __init__(self, summary: ProblemSummary) -> None:
 		super().__init__(Label(f"{summary.index}  {summary.title}"))
 		self.summary = summary
+
+
+class ContestItem(ListItem):
+	"""コンテスト検索結果の 1 行。元の Contest を保持する。"""
+
+	def __init__(self, contest: Contest) -> None:
+		label = f"{contest.id}".ljust(12) + f" {contest.title}"
+		super().__init__(Label(label))
+		self.contest = contest
 
 
 class ProblemList(ListView):

@@ -7,15 +7,23 @@ AtCoder には公開 API が無いため、ログイン済みセッションを�
 
 from __future__ import annotations
 
+import dataclasses
 import http.cookiejar
+import json
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import requests
 
 from . import parser
-from .config import REQUEST_INTERVAL, USER_AGENT, session_path
-from .models import Language, Problem, ProblemSummary, Submission
+from .config import (
+	REQUEST_INTERVAL,
+	USER_AGENT,
+	contests_cache_path,
+	session_path,
+)
+from .models import Contest, Language, Problem, ProblemSummary, Submission
 
 BASE_URL = "https://atcoder.jp"
 
@@ -120,6 +128,61 @@ class AtCoderClient:
 			self._cookie_path.unlink()
 
 	# -- 取得系 --------------------------------------------------------
+
+	def get_contests(
+		self,
+		*,
+		force_refresh: bool = False,
+		progress: Callable[[int, int], None] | None = None,
+	) -> list[Contest]:
+		"""過去コンテストの一覧を取得する。
+
+		アーカイブは数十ページに渡るため、初回取得時にローカルへキャッシュし、
+		以降はキャッシュを使う。force_refresh=True で再取得する。
+		progress(現在ページ, 総ページ数) が指定されると進捗を通知する。
+		"""
+		cache = contests_cache_path()
+		if not force_refresh and cache.exists():
+			cached = self._load_contests_cache(cache)
+			if cached:
+				return cached
+		contests = self._fetch_all_contests(progress)
+		self._save_contests_cache(cache, contests)
+		return contests
+
+	@staticmethod
+	def _load_contests_cache(cache: Path) -> list[Contest]:
+		try:
+			data = json.loads(cache.read_text(encoding="utf-8"))
+			return [Contest(**item) for item in data["contests"]]
+		except (json.JSONDecodeError, OSError, KeyError, TypeError):
+			return []
+
+	@staticmethod
+	def _save_contests_cache(cache: Path, contests: list[Contest]) -> None:
+		payload = {"contests": [dataclasses.asdict(c) for c in contests]}
+		try:
+			cache.write_text(
+				json.dumps(payload, ensure_ascii=False), encoding="utf-8"
+			)
+		except OSError:
+			pass
+
+	def _fetch_all_contests(
+		self, progress: Callable[[int, int], None] | None
+	) -> list[Contest]:
+		archive_url = f"{BASE_URL}/contests/archive"
+		first = self._get(archive_url, params={"lang": "ja"})
+		last_page = parser.parse_archive_last_page(first.text)
+		contests = parser.parse_contest_archive(first.text)
+		if progress:
+			progress(1, last_page)
+		for page in range(2, last_page + 1):
+			resp = self._get(archive_url, params={"lang": "ja", "page": page})
+			contests.extend(parser.parse_contest_archive(resp.text))
+			if progress:
+				progress(page, last_page)
+		return contests
 
 	def get_task_list(self, contest_id: str) -> list[ProblemSummary]:
 		url = f"{BASE_URL}/contests/{contest_id}/tasks"

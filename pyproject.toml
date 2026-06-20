@@ -1,5 +1,5 @@
 [project]
-name = "atcoder-cli"
+name = "atcoder-tui"
 version = "0.1.0"
 description = "A lazygit-style TUI for browsing, testing, and submitting AtCoder problems."
 readme = "README.md"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-atcoder-cli = "atcoder_cli:main"
+atcoder-tui = "atcoder_tui:main"
 
 [build-system]
 requires = ["uv_build>=0.11.19,<0.12.0"]

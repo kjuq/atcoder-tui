@@ -1,4 +1,4 @@
-# atcoder-cli
+# atcoder-tui
 
 !! **CAUTION: このソフトウェアは開発途中です。使用して生じた何如なる問題について責任を持ちません。特にコンテスト本番での使用は避けるようお願いします** !!
 
@@ -29,15 +29,17 @@ uv sync
 ## 使い方
 
 ```bash
-uv run atcoder-cli
+uv run atcoder-tui
 ```
 
 起動後の流れ:
 
-1. `c` を押してコンテストID (例 `abc086`) を入力し Enter
+1. `/` でコンテスト検索を開き、`abc100` のように打ち込んで絞り込み、Enter で選択
 2. 左上の一覧で問題を選び Enter -> 右に問題文が表示される
 3. `t` でローカルのソースをサンプルテスト
 4. `L` でログインし、`s` で提出 (確認ダイアログあり)
+
+コンテスト一覧は初回に AtCoder のアーカイブ全体を取得してローカルにキャッシュします (数十秒)。以降は即座に表示され、検索画面で `Ctrl+R` を押すと再取得できます。
 
 提出やテストに使うソースファイルは、その都度パスを入力します。初期値として `{task_id}.py` (例 `abc086_a.py`) を提案します。
 
@@ -56,7 +58,7 @@ AtCoder のログインフォームは Cloudflare Turnstile (CAPTCHA の一種) 
 
 | キー | 機能 |
 | --- | --- |
-| `/` | コンテストID 入力欄 (検索) へフォーカス (`c` も可) |
+| `/` | コンテストを検索して選ぶ (`abc100` などで絞り込み。`c` も可) |
 | `Enter` | 問題一覧で選択中の問題を開く |
 | `t` | サンプルテストを実行 |
 | `s` | 選択中の問題に提出 (確認あり) |
@@ -75,7 +77,7 @@ AtCoder のログインフォームは Cloudflare Turnstile (CAPTCHA の一種) 
 
 ## 設定/セッション
 
-ログインセッション (cookie) は [platformdirs](https://github.com/tox-dev/platformdirs) が示すユーザ設定ディレクトリ配下に保存されます (macOS なら `~/Library/Application Support/atcoder-cli/session.txt`)。パスワードは扱わず、ブラウザから取り込んだセッション Cookie (`REVEL_SESSION`) のみを保存します。
+ログインセッション (cookie) は [platformdirs](https://github.com/tox-dev/platformdirs) が示すユーザ設定ディレクトリ配下に保存されます (macOS なら `~/Library/Application Support/atcoder-tui/session.txt`)。パスワードは扱わず、ブラウザから取り込んだセッション Cookie (`REVEL_SESSION`) のみを保存します。
 
 ## 開発
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from atcoder_cli.mathtext import latex_to_unicode, preprocess_math
+from atcoder_tui.mathtext import latex_to_unicode, preprocess_math
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

@@ -11,23 +11,30 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Header, Input, ListView
+from textual.widgets import Footer, Header, ListView
 
 from ..client import AtCoderClient, AtCoderError
 from ..markdown import html_to_markdown
-from ..models import Problem, ProblemSummary
+from ..models import Contest, Problem, ProblemSummary
 from ..tester import TesterError, parse_time_limit, run_samples
-from .modals import ConfirmScreen, CookieLoginScreen, FilePromptScreen, SubmitScreen
+from .modals import (
+	REFRESH_CONTESTS,
+	ConfirmScreen,
+	ContestSearchScreen,
+	CookieLoginScreen,
+	FilePromptScreen,
+	SubmitScreen,
+)
 from .widgets import ProblemItem, ProblemList, ResultsPanel, StatementPanel
 
 _WELCOME = """\
-# atcoder-cli
+# atcoder-tui
 
 AtCoder の問題を閲覧・テスト・提出できる TUI です。
 
 操作方法:
 
-- `/` : コンテストID の入力欄へフォーカス (例 abc086)
+- `/` : コンテストを検索して選ぶ (例 abc100 で絞り込み)
 - `Enter` : 問題一覧から問題を開く
 - `t` : 選択中の問題をローカルのサンプルでテスト
 - `s` : 選択中の問題にソースを提出 (確認あり)
@@ -37,7 +44,7 @@ AtCoder の問題を閲覧・テスト・提出できる TUI です。
 - `h` `l` `Tab` : パネル間を移動 / `j` `k` : パネル内を上下移動
 - `?` : このヘルプ / `q` : 終了
 
-まずは `c` を押してコンテストID を入力してください。
+まずは `/` を押してコンテストを検索してください。
 """
 
 
@@ -45,11 +52,11 @@ class AtcoderApp(App[None]):
 	"""AtCoder 問題ブラウザ TUI。"""
 
 	CSS_PATH = "styles.tcss"
-	TITLE = "atcoder-cli"
+	TITLE = "atcoder-tui"
 
 	BINDINGS = [
-		Binding("slash", "focus_contest", "Search"),
-		Binding("c", "focus_contest", "Contest", show=False),
+		Binding("slash", "pick_contest", "Contest"),
+		Binding("c", "pick_contest", "Contest", show=False),
 		Binding("t", "run_tests", "Test"),
 		Binding("s", "submit", "Submit"),
 		Binding("S", "submissions", "Submissions"),
@@ -71,6 +78,7 @@ class AtcoderApp(App[None]):
 		super().__init__()
 		self.client = client or AtCoderClient()
 		self.contest_id: str | None = None
+		self.contests: list[Contest] | None = None
 		self.problems: list[ProblemSummary] = []
 		self.current_problem: Problem | None = None
 
@@ -81,9 +89,6 @@ class AtcoderApp(App[None]):
 		with Horizontal(id="body"):
 			with Vertical(id="left"):
 				with Container(id="problems-panel"):
-					yield Input(
-						placeholder="contest id (例: abc086)", id="contest-input"
-					)
 					yield ProblemList(id="problem-list")
 				yield ResultsPanel(id="results-panel")
 			yield StatementPanel(id="statement-panel")
@@ -110,9 +115,6 @@ class AtcoderApp(App[None]):
 		return self.query_one("#results-panel", ResultsPanel)
 
 	# -- フォーカス操作 ------------------------------------------------
-
-	def action_focus_contest(self) -> None:
-		self.query_one("#contest-input", Input).focus()
 
 	def action_focus_problems(self) -> None:
 		self.query_one("#problem-list", ListView).focus()
@@ -159,11 +161,41 @@ class AtcoderApp(App[None]):
 
 	# -- コンテスト/問題の読み込み ------------------------------------
 
-	def on_input_submitted(self, event: Input.Submitted) -> None:
-		if event.input.id == "contest-input":
-			contest_id = event.value.strip()
-			if contest_id:
-				self.load_contest(contest_id)
+	async def _ensure_contests(self, *, force: bool = False) -> list[Contest] | None:
+		"""コンテスト一覧を (必要なら取得して) 返す。失敗時は None。"""
+		if self.contests is not None and not force:
+			return self.contests
+
+		def report(page: int, total: int) -> None:
+			self.call_from_thread(
+				self.notify, f"コンテスト一覧を取得中... {page}/{total}"
+			)
+
+		self.notify("コンテスト一覧を取得中... (初回は数十秒かかります)")
+		try:
+			contests = await asyncio.to_thread(
+				self.client.get_contests, force_refresh=force, progress=report
+			)
+		except AtCoderError as exc:
+			self.notify(str(exc), severity="error")
+			return None
+		self.contests = contests
+		return contests
+
+	@work(exclusive=True, group="pick-contest")
+	async def action_pick_contest(self) -> None:
+		force = False
+		while True:
+			contests = await self._ensure_contests(force=force)
+			if not contests:
+				return
+			choice = await self.push_screen_wait(ContestSearchScreen(contests))
+			if choice == REFRESH_CONTESTS:
+				force = True
+				continue
+			if choice:
+				self.load_contest(choice)
+			return
 
 	def on_list_view_selected(self, event: ListView.Selected) -> None:
 		item = event.item
@@ -183,6 +215,7 @@ class AtcoderApp(App[None]):
 			return
 		self.contest_id = contest_id
 		self.problems = problems
+		self.query_one("#problems-panel").border_title = f"1 {contest_id}"
 		await self._populate_problems(problems)
 		self.notify(f"{len(problems)} 問を取得しました")
 

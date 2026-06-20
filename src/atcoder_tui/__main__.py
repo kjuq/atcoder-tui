@@ -1,4 +1,4 @@
-"""python -m atcoder_cli で TUI を起動する。"""
+"""python -m atcoder_tui で TUI を起動する。"""
 
 from __future__ import annotations
 

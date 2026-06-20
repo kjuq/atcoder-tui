@@ -5,14 +5,19 @@ from __future__ import annotations
 import webbrowser
 from pathlib import Path
 
+from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, Select, Static
+from textual.widgets import Button, Input, Label, ListView, Select, Static
 
-from ..models import Language, Problem
+from ..models import Contest, Language, Problem
+from .widgets import ContestItem
 
 _LOGIN_URL = "https://atcoder.jp/login"
+
+# コンテスト検索で「一覧を再取得する」ことを表す番兵値。
+REFRESH_CONTESTS = "\x00refresh\x00"
 
 
 class CookieLoginScreen(ModalScreen["str | None"]):
@@ -109,6 +114,99 @@ class FilePromptScreen(ModalScreen[str | None]):
 			self.dismiss(None)
 			return
 		self.dismiss(value)
+
+	def action_cancel(self) -> None:
+		self.dismiss(None)
+
+
+class ContestSearchScreen(ModalScreen["str | None"]):
+	"""過去コンテストを絞り込み検索して選ぶ画面。
+
+	入力欄に "abc100" のような文字列を打つと、コンテスト id とタイトルに対して
+	部分一致でフィルタする。Enter または一覧での選択で id を返す。
+	"""
+
+	BINDINGS = [
+		("escape", "cancel", "Cancel"),
+		("ctrl+r", "refresh", "Refresh"),
+	]
+
+	# 一度に表示する最大件数 (打ち込むほど絞られる)。
+	_LIMIT = 100
+
+	def __init__(self, contests: list[Contest]) -> None:
+		super().__init__()
+		self._contests = contests
+
+	def compose(self) -> ComposeResult:
+		with Vertical(id="contest-dialog"):
+			yield Label("コンテストを選択", classes="dialog-title")
+			yield Input(
+				placeholder="abc100 などで検索 (id / タイトル)", id="contest-filter"
+			)
+			yield ListView(id="contest-list")
+			yield Static("", id="contest-count")
+			yield Static(
+				"↓: 一覧へ  Enter: 選択  Ctrl+R: 一覧を再取得  Esc: 閉じる",
+				id="contest-hint",
+			)
+
+	def on_mount(self) -> None:
+		self._refilter("")
+		self.query_one("#contest-filter", Input).focus()
+
+	def _filtered(self, query: str) -> tuple[list[Contest], int]:
+		q = query.strip().lower()
+		if not q:
+			hits = self._contests
+		else:
+			hits = [
+				c
+				for c in self._contests
+				if q in c.id.lower() or q in c.title.lower()
+			]
+		return hits[: self._LIMIT], len(hits)
+
+	def _refilter(self, query: str) -> None:
+		hits, total = self._filtered(query)
+		listview = self.query_one("#contest-list", ListView)
+		listview.clear()
+		for contest in hits:
+			listview.append(ContestItem(contest))
+		if hits:
+			listview.index = 0
+		count = self.query_one("#contest-count", Static)
+		more = " (絞り込んでください)" if total > len(hits) else ""
+		count.update(f"{len(hits)} / {total} 件{more}")
+
+	def on_input_changed(self, event: Input.Changed) -> None:
+		if event.input.id == "contest-filter":
+			self._refilter(event.value)
+
+	def on_input_submitted(self, event: Input.Submitted) -> None:
+		self._pick_highlighted()
+
+	def on_key(self, event: events.Key) -> None:
+		# 入力欄で下矢印を押したら一覧へフォーカスを移す。
+		focused = self.focused
+		if event.key == "down" and focused is not None and focused.id == "contest-filter":
+			self.query_one("#contest-list", ListView).focus()
+			event.stop()
+
+	def on_list_view_selected(self, event: ListView.Selected) -> None:
+		if isinstance(event.item, ContestItem):
+			self.dismiss(event.item.contest.id)
+
+	def _pick_highlighted(self) -> None:
+		listview = self.query_one("#contest-list", ListView)
+		item = listview.highlighted_child
+		if isinstance(item, ContestItem):
+			self.dismiss(item.contest.id)
+		else:
+			self.notify("該当するコンテストがありません", severity="warning")
+
+	def action_refresh(self) -> None:
+		self.dismiss(REFRESH_CONTESTS)
 
 	def action_cancel(self) -> None:
 		self.dismiss(None)

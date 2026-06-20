@@ -106,7 +106,7 @@ def run_samples(
 		raise TesterError(f"ソースファイルが見つかりません: {source_path}")
 	runner = runner or detect_runner(source_path)
 
-	with tempfile.TemporaryDirectory(prefix="atcoder-cli-") as tmp:
+	with tempfile.TemporaryDirectory(prefix="atcoder-tui-") as tmp:
 		workdir = Path(tmp)
 		exe = workdir / "a.out"
 

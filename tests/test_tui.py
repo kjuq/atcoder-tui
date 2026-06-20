@@ -5,11 +5,11 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import patch
 
-from textual.widgets import Input, ListView, Markdown
+from textual.widgets import ListView, Markdown
 
-from atcoder_cli.models import Problem, ProblemSummary, Sample
-from atcoder_cli.tui.app import AtcoderApp
-from atcoder_cli.tui.widgets import ProblemItem
+from atcoder_tui.models import Contest, Problem, ProblemSummary, Sample
+from atcoder_tui.tui.app import AtcoderApp
+from atcoder_tui.tui.widgets import ProblemItem
 
 
 class FakeClient:
@@ -17,6 +17,13 @@ class FakeClient:
 
 	def is_logged_in(self) -> bool:
 		return False
+
+	def get_contests(self, *, force_refresh: bool = False, progress=None) -> list[Contest]:
+		return [
+			Contest("abc086", "AtCoder Beginner Contest 086", "2018-01-01", "~ 1999", "https://x/abc086"),
+			Contest("abc100", "AtCoder Beginner Contest 100", "2018-06-01", "~ 1999", "https://x/abc100"),
+			Contest("arc050", "AtCoder Regular Contest 050", "2016-01-01", "1200 ~", "https://x/arc050"),
+		]
 
 	def get_task_list(self, contest_id: str) -> list[ProblemSummary]:
 		return [
@@ -40,7 +47,7 @@ class FakeClient:
 		)
 
 
-async def _wait_until(app: AtcoderApp, pilot, predicate, *, tries: int = 40) -> bool:
+async def _wait_until(app: AtcoderApp, pilot, predicate, *, tries: int = 60) -> bool:
 	for _ in range(tries):
 		if predicate():
 			return True
@@ -59,13 +66,21 @@ def test_app_layout_and_flow() -> None:
 
 			# 初期表示はウェルカム (ヘルプ)。
 			md = app.query_one("#statement-md", Markdown)
-			assert "atcoder-cli" in md.source
+			assert "atcoder-tui" in md.source
 
-			# コンテストID を入力して問題一覧を読み込む。
-			contest = app.query_one("#contest-input", Input)
-			contest.focus()
-			await pilot.press(*"abc086")
+			# `/` でコンテスト検索を開き、id で絞り込んで選ぶ。
+			await pilot.press("slash")
+			assert await _wait_until(
+				app, pilot, lambda: app.screen.__class__.__name__ == "ContestSearchScreen"
+			)
+			# "abc100" で絞り込むと候補が 1 件になる。
+			await pilot.press(*"abc100")
+			await pilot.pause(0.1)
+			contest_list = app.screen.query_one("#contest-list", ListView)
+			assert len(list(contest_list.query("ContestItem"))) == 1
+			# Enter で選択 -> モーダルが閉じて問題が読み込まれる。
 			await pilot.press("enter")
+			assert await _wait_until(app, pilot, lambda: app.contest_id == "abc100")
 			assert await _wait_until(app, pilot, lambda: len(app.problems) == 2)
 
 			listview = app.query_one("#problem-list", ListView)
@@ -113,11 +128,7 @@ def test_app_layout_and_flow() -> None:
 			await pilot.press("h")
 			assert app.focused is statement
 
-			# `/` で検索 (contest 入力) にフォーカスする。
-			await pilot.press("slash")
-			assert app.focused is contest
-
-			# Tab はパネルのみを巡回し、検索ウィンドウはスキップする。
+			# Tab はパネルのみを巡回する。
 			listview.focus()
 			await pilot.press("tab")
 			assert app.focused is results
@@ -125,8 +136,6 @@ def test_app_layout_and_flow() -> None:
 			assert app.focused is statement
 			await pilot.press("tab")
 			assert app.focused is listview
-			# 1 周しても contest 入力には戻らない。
-			assert app.focused is not contest
 
 			# r で現在の問題をブラウザで開く。
 			with patch("webbrowser.open") as mock_open:
@@ -138,12 +147,11 @@ def test_app_layout_and_flow() -> None:
 			# L (大文字) でログイン画面 (Cookie 貼り付け) が開く。
 			await pilot.press("L")
 			assert await _wait_until(
-				app, pilot, lambda: app.screen is not app.screen_stack[0]
+				app, pilot, lambda: app.screen.__class__.__name__ == "CookieLoginScreen"
 			)
-			assert app.screen.__class__.__name__ == "CookieLoginScreen"
 			await pilot.press("escape")
 
 	with patch(
-		"atcoder_cli.tui.app.html_to_markdown", return_value="変換済み本文"
+		"atcoder_tui.tui.app.html_to_markdown", return_value="変換済み本文"
 	):
 		asyncio.run(scenario())
