@@ -30,6 +30,12 @@ BASE_URL = "https://atcoder.jp"
 # AtCoder のログインセッションを表す Cookie 名 (Revel フレームワーク)。
 SESSION_COOKIE = "REVEL_SESSION"
 
+# AtCoder アーカイブの「全て」(category="") ビューに含まれない特殊カテゴリーの
+# category 値。これらは category を明示しないと一覧に出てこないため、別途取得する。
+#   20: AtCoder Weekday Contest / 6: AtCoder Typical Contest / 50: PAST過去問
+#   60: AtCoder Daily Training / 101: 非公式コンテスト(unrated) / 200: JOI過去問
+_EXTRA_ARCHIVE_CATEGORIES: tuple[str, ...] = ("20", "6", "50", "60", "101", "200")
+
 
 class AtCoderError(Exception):
 	"""AtCoder クライアントの基底例外。"""
@@ -172,17 +178,32 @@ class AtCoderClient:
 		self, progress: Callable[[int, int], None] | None
 	) -> list[Contest]:
 		archive_url = f"{BASE_URL}/contests/archive"
-		first = self._get(archive_url, params={"lang": "ja"})
-		last_page = parser.parse_archive_last_page(first.text)
-		contests = parser.parse_contest_archive(first.text)
-		if progress:
-			progress(1, last_page)
-		for page in range(2, last_page + 1):
-			resp = self._get(archive_url, params={"lang": "ja", "page": page})
-			contests.extend(parser.parse_contest_archive(resp.text))
+		# デフォルトスコープ (全て) に加え、そこに含まれない特殊カテゴリーも取得する。
+		scopes: list[str | None] = [None, *_EXTRA_ARCHIVE_CATEGORIES]
+		by_id: dict[str, Contest] = {}
+		total_pages = 0
+		done_pages = 0
+		for category in scopes:
+			params: dict[str, object] = {"lang": "ja"}
+			if category:
+				params["category"] = category
+			first = self._get(archive_url, params=params)
+			last_page = parser.parse_archive_last_page(first.text)
+			total_pages += last_page
+			for contest in parser.parse_contest_archive(first.text):
+				# 先に取得したスコープ (デフォルト) を優先して重複を排除する。
+				by_id.setdefault(contest.id, contest)
+			done_pages += 1
 			if progress:
-				progress(page, last_page)
-		return contests
+				progress(done_pages, total_pages)
+			for page in range(2, last_page + 1):
+				resp = self._get(archive_url, params={**params, "page": page})
+				for contest in parser.parse_contest_archive(resp.text):
+					by_id.setdefault(contest.id, contest)
+				done_pages += 1
+				if progress:
+					progress(done_pages, total_pages)
+		return list(by_id.values())
 
 	def get_task_list(self, contest_id: str) -> list[ProblemSummary]:
 		url = f"{BASE_URL}/contests/{contest_id}/tasks"
