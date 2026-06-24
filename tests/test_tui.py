@@ -155,3 +155,47 @@ def test_app_layout_and_flow() -> None:
 		"atcoder_tui.tui.app.html_to_markdown", return_value="変換済み本文"
 	):
 		asyncio.run(scenario())
+
+
+def test_contest_search_highlight_and_slash_focus() -> None:
+	"""絞り込み直後は常に先頭が選択され、"/" で検索窓へ戻れること。"""
+
+	async def scenario() -> None:
+		app = AtcoderApp(client=FakeClient())
+		async with app.run_test() as pilot:
+			await pilot.press("slash")
+			assert await _wait_until(
+				app,
+				pilot,
+				lambda: app.screen.__class__.__name__ == "ContestSearchScreen",
+			)
+			screen = app.screen
+			listview = screen.query_one("#contest-list", ListView)
+
+			# 絞り込むたびに先頭 (index=0) が選択された状態になっている。
+			for keys in ("abc", "0", "8"):
+				await pilot.press(*keys)
+				await pilot.pause(0.1)
+				assert listview.index == 0
+				assert listview.highlighted_child is not None
+
+			# 一覧へフォーカスを移し、"/" で検索窓へ戻れる。
+			await pilot.press("down")
+			assert await _wait_until(
+				app, pilot, lambda: app.focused is not None and app.focused.id == "contest-list"
+			)
+			await pilot.press("slash")
+			assert await _wait_until(
+				app,
+				pilot,
+				lambda: app.focused is not None and app.focused.id == "contest-filter",
+			)
+			filter_input = screen.query_one("#contest-filter")
+			# "/" は検索文字列に紛れ込まない。
+			assert "/" not in filter_input.value
+			# 戻ったとき入力済み文字列は選択状態になっていない
+			# (次の入力で全置換されないように)。
+			assert filter_input.selected_text == ""
+			await pilot.press("escape")
+
+	asyncio.run(scenario())

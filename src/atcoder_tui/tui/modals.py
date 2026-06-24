@@ -142,17 +142,21 @@ class ContestSearchScreen(ModalScreen["str | None"]):
 		with Vertical(id="contest-dialog"):
 			yield Label("コンテストを選択", classes="dialog-title")
 			yield Input(
-				placeholder="abc100 などで検索 (id / タイトル)", id="contest-filter"
+				placeholder="abc100 などで検索 (id / タイトル)",
+				id="contest-filter",
+				# "/" で戻ったときに入力済みの文字列を選択状態にしない
+				# (選択されていると次の入力で全置換されてしまうため)。
+				select_on_focus=False,
 			)
 			yield ListView(id="contest-list")
 			yield Static("", id="contest-count")
 			yield Static(
-				"↓: 一覧へ  Enter: 選択  Ctrl+R: 一覧を再取得  Esc: 閉じる",
+				"↓: 一覧へ  /: 検索へ  Enter: 選択  Ctrl+R: 一覧を再取得  Esc: 閉じる",
 				id="contest-hint",
 			)
 
-	def on_mount(self) -> None:
-		self._refilter("")
+	async def on_mount(self) -> None:
+		await self._refilter("")
 		self.query_one("#contest-filter", Input).focus()
 
 	def _filtered(self, query: str) -> tuple[list[Contest], int]:
@@ -167,31 +171,43 @@ class ContestSearchScreen(ModalScreen["str | None"]):
 			]
 		return hits[: self._LIMIT], len(hits)
 
-	def _refilter(self, query: str) -> None:
+	async def _refilter(self, query: str) -> None:
 		hits, total = self._filtered(query)
 		listview = self.query_one("#contest-list", ListView)
-		listview.clear()
-		for contest in hits:
-			listview.append(ContestItem(contest))
+		# clear()/extend() は非同期に DOM を更新する。await せずに index を
+		# 設定すると、古い項目の削除や新項目のマウントが終わる前に index が
+		# 確定してしまい、絞り込み直後に先頭が選択されない瞬間が生じる。
+		# 必ず DOM 更新を待ってから先頭をハイライトする。
+		await listview.clear()
 		if hits:
+			await listview.extend(ContestItem(contest) for contest in hits)
 			listview.index = 0
 		count = self.query_one("#contest-count", Static)
 		more = " (絞り込んでください)" if total > len(hits) else ""
 		count.update(f"{len(hits)} / {total} 件{more}")
 
-	def on_input_changed(self, event: Input.Changed) -> None:
+	async def on_input_changed(self, event: Input.Changed) -> None:
 		if event.input.id == "contest-filter":
-			self._refilter(event.value)
+			await self._refilter(event.value)
 
 	def on_input_submitted(self, event: Input.Submitted) -> None:
 		self._pick_highlighted()
 
 	def on_key(self, event: events.Key) -> None:
-		# 入力欄で下矢印を押したら一覧へフォーカスを移す。
 		focused = self.focused
+		# 入力欄で下矢印を押したら一覧へフォーカスを移す。
 		if event.key == "down" and focused is not None and focused.id == "contest-filter":
 			self.query_one("#contest-list", ListView).focus()
 			event.stop()
+		# 一覧側にいるときに "/" を押したら検索窓へフォーカスを戻す。
+		# (入力欄にフォーカスがある間は Input が "/" を文字として消費するため
+		#  ここには来ない。)
+		elif event.key == "slash" and (
+			focused is None or focused.id != "contest-filter"
+		):
+			self.query_one("#contest-filter", Input).focus()
+			event.stop()
+			event.prevent_default()
 
 	def on_list_view_selected(self, event: ListView.Selected) -> None:
 		if isinstance(event.item, ContestItem):
