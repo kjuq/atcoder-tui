@@ -23,15 +23,26 @@ class _FakeResponse:
 		self.text = text
 
 
-def _archive_html(rows: list[tuple[str, str]]) -> str:
-	"""contest_id/title の行からアーカイブ 1 ページ分の最小 HTML を作る。"""
-	trs = "".join(
+def _rows_html(rows: list[tuple[str, str]]) -> str:
+	return "".join(
 		f'<tr><td><time>2020-01-01 00:00:00+0900</time></td>'
 		f'<td><a href="/contests/{cid}">{title}</a></td>'
 		f"<td>00:40</td><td>-</td></tr>"
 		for cid, title in rows
 	)
-	return f"<table><tbody>{trs}</tbody></table>"
+
+
+def _archive_html(rows: list[tuple[str, str]]) -> str:
+	"""contest_id/title の行からアーカイブ 1 ページ分の最小 HTML を作る。"""
+	return f"<table><tbody>{_rows_html(rows)}</tbody></table>"
+
+
+def _live_html(rows: list[tuple[str, str]]) -> str:
+	"""開催中セクション 1 つだけを持つメインページ風の最小 HTML を作る。"""
+	return (
+		'<div id="contest-table-action">'
+		f"<table><tbody>{_rows_html(rows)}</tbody></table></div>"
+	)
 
 
 def test_login_with_cookie_stores_session(tmp_path: Path, monkeypatch) -> None:
@@ -118,3 +129,65 @@ def test_fetch_all_contests_queries_every_special_category(
 	assert None in seen
 	for category in _EXTRA_ARCHIVE_CATEGORIES:
 		assert category in seen
+
+
+def _patch_cache(monkeypatch, tmp_path: Path) -> None:
+	# get_contests がユーザーの実キャッシュに触らないよう、tmp に向ける。
+	monkeypatch.setattr(
+		"atcoder_tui.client.contests_cache_path",
+		lambda: tmp_path / "contests.json",
+	)
+
+
+def test_get_contests_merges_live_and_dedups(tmp_path: Path, monkeypatch) -> None:
+	client = _client(tmp_path)
+	_patch_cache(monkeypatch, tmp_path)
+
+	def fake_get(url: str, **kwargs: object):
+		if url.endswith("/contests/archive"):
+			# 終了済み: abc001 と、ライブと重複する awc0098。
+			return _FakeResponse(
+				_archive_html(
+					[
+						("abc001", "AtCoder Beginner Contest 001"),
+						("awc0098", "AtCoder Weekday Contest 0098 Beta"),
+					]
+				)
+			)
+		# メインページ (開催中): awc0098。
+		return _FakeResponse(
+			_live_html([("awc0098", "AtCoder Weekday Contest 0098 Beta")])
+		)
+
+	monkeypatch.setattr(client, "_get", fake_get)
+	contests = client.get_contests(force_refresh=True)
+
+	ids = [c.id for c in contests]
+	assert "awc0098" in ids
+	assert "abc001" in ids
+	# アーカイブとライブの重複は 1 件に。
+	assert ids.count("awc0098") == 1
+	# ライブが先頭に来る。
+	assert ids[0] == "awc0098"
+
+
+def test_get_contests_survives_live_fetch_failure(
+	tmp_path: Path, monkeypatch
+) -> None:
+	from atcoder_tui.client import AtCoderError
+
+	client = _client(tmp_path)
+	_patch_cache(monkeypatch, tmp_path)
+
+	def fake_get(url: str, **kwargs: object):
+		if url.endswith("/contests/archive"):
+			return _FakeResponse(
+				_archive_html([("abc001", "AtCoder Beginner Contest 001")])
+			)
+		raise AtCoderError("ネットワークエラー")
+
+	monkeypatch.setattr(client, "_get", fake_get)
+	contests = client.get_contests(force_refresh=True)
+
+	# ライブ取得が失敗してもアーカイブだけは返る。
+	assert [c.id for c in contests] == ["abc001"]

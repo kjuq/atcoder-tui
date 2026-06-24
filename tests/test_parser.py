@@ -41,6 +41,34 @@ def test_parse_archive_last_page() -> None:
 	assert parser.parse_archive_last_page(html) == 3
 
 
+def test_parse_contest_list_picks_selected_sections() -> None:
+	html = _read("sample_contests.html")
+	# 開催中 + 予定 + デイリー のみ拾う (常設 permanent は対象外)。
+	contests = parser.parse_contest_list(
+		html,
+		("contest-table-action", "contest-table-upcoming", "contest-table-daily"),
+	)
+	ids = [c.id for c in contests]
+	# action の demoawc098、upcoming の demoabc464、daily の demoawc098/demo_adt_easy。
+	assert "demoawc098" in ids
+	assert "demoabc464" in ids
+	assert "demo_adt_easy" in ids
+	# 常設は含めていないので出てこない。
+	assert "demoperm" not in ids
+	# action と daily の重複行はこの関数では両方返る (重複排除は client 側で行う)。
+	assert ids.count("demoawc098") == 2
+	action = next(c for c in contests if c.id == "demoawc098")
+	assert action.title == "Demo Weekday Contest 0098 Beta"
+	assert action.start_time == "2026-06-24 20:00:00+0900"
+	assert action.rated == "-"
+	assert action.url.endswith("/contests/demoawc098")
+
+
+def test_parse_contest_list_ignores_missing_section() -> None:
+	html = _read("sample_contests.html")
+	assert parser.parse_contest_list(html, ("contest-table-nonexistent",)) == []
+
+
 def test_parse_task_list() -> None:
 	summaries = parser.parse_task_list(_read("sample_tasks.html"), "demo")
 	assert len(summaries) == 4

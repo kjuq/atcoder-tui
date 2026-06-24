@@ -36,6 +36,14 @@ SESSION_COOKIE = "REVEL_SESSION"
 #   60: AtCoder Daily Training / 101: 非公式コンテスト(unrated) / 200: JOI過去問
 _EXTRA_ARCHIVE_CATEGORIES: tuple[str, ...] = ("20", "6", "50", "60", "101", "200")
 
+# メインの /contests/ ページにある、アーカイブ (終了済み) に含まれないセクションの
+# id。それぞれ 開催中 / 予定 / デイリー。開催中の awc098 のようなコンテストはここ。
+_LIVE_CONTEST_SECTIONS: tuple[str, ...] = (
+	"contest-table-action",
+	"contest-table-upcoming",
+	"contest-table-daily",
+)
+
 
 class AtCoderError(Exception):
 	"""AtCoder クライアントの基底例外。"""
@@ -143,18 +151,25 @@ class AtCoderClient:
 	) -> list[Contest]:
 		"""過去コンテストの一覧を取得する。
 
-		アーカイブは数十ページに渡るため、初回取得時にローカルへキャッシュし、
-		以降はキャッシュを使う。force_refresh=True で再取得する。
+		アーカイブ (終了済み) は数十ページに渡るため、初回取得時にローカルへ
+		キャッシュし、以降はキャッシュを使う。force_refresh=True で再取得する。
+		加えて、開催中/予定/デイリーのコンテストはメインページから毎回フレッシュに
+		取得してマージする (時間で変わるためキャッシュしない)。
 		progress(現在ページ, 総ページ数) が指定されると進捗を通知する。
 		"""
 		cache = contests_cache_path()
+		archive: list[Contest] = []
 		if not force_refresh and cache.exists():
-			cached = self._load_contests_cache(cache)
-			if cached:
-				return cached
-		contests = self._fetch_all_contests(progress)
-		self._save_contests_cache(cache, contests)
-		return contests
+			archive = self._load_contests_cache(cache)
+		if not archive:
+			archive = self._fetch_all_contests(progress)
+			self._save_contests_cache(cache, archive)
+		# 開催中/予定/デイリーを先頭にして、ID で重複排除しつつマージする。
+		live = self._fetch_live_contests()
+		by_id: dict[str, Contest] = {}
+		for contest in [*live, *archive]:
+			by_id.setdefault(contest.id, contest)
+		return list(by_id.values())
 
 	@staticmethod
 	def _load_contests_cache(cache: Path) -> list[Contest]:
@@ -204,6 +219,19 @@ class AtCoderClient:
 				if progress:
 					progress(done_pages, total_pages)
 		return list(by_id.values())
+
+	def _fetch_live_contests(self) -> list[Contest]:
+		"""開催中/予定/デイリーのコンテストをメインページから取得する。
+
+		アーカイブには無い「進行中」のコンテストを拾う。時間で変わるため
+		キャッシュはしない。ネットワーク失敗時は空リストを返し、キャッシュ済みの
+		アーカイブだけでも一覧が出るようにする。
+		"""
+		try:
+			resp = self._get(f"{BASE_URL}/contests/", params={"lang": "ja"})
+		except AtCoderError:
+			return []
+		return parser.parse_contest_list(resp.text, _LIVE_CONTEST_SECTIONS)
 
 	def get_task_list(self, contest_id: str) -> list[ProblemSummary]:
 		url = f"{BASE_URL}/contests/{contest_id}/tasks"

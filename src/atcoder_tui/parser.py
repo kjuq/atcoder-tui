@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
@@ -43,13 +44,12 @@ def parse_archive_last_page(html: str) -> int:
 	return max(pages) if pages else 1
 
 
-def parse_contest_archive(html: str) -> list[Contest]:
-	"""コンテストアーカイブ 1 ページ分から Contest のリストを作る。"""
-	soup = make_soup(html)
+def _parse_contest_rows(table: Tag) -> list[Contest]:
+	"""コンテスト一覧テーブル (開始時刻/名前/時間/Rated の 4 列) を解析する。
+
+	アーカイブとメインページ (開催中/予定/デイリー) は同じ行構造のため共通化する。
+	"""
 	contests: list[Contest] = []
-	table = soup.find("table")
-	if not isinstance(table, Tag):
-		return contests
 	body = table.find("tbody")
 	rows = body.find_all("tr") if isinstance(body, Tag) else table.find_all("tr")
 	for tr in rows:
@@ -81,6 +81,34 @@ def parse_contest_archive(html: str) -> list[Contest]:
 				url=urljoin(BASE_URL, href),
 			)
 		)
+	return contests
+
+
+def parse_contest_archive(html: str) -> list[Contest]:
+	"""コンテストアーカイブ 1 ページ分から Contest のリストを作る。"""
+	soup = make_soup(html)
+	table = soup.find("table")
+	if not isinstance(table, Tag):
+		return []
+	return _parse_contest_rows(table)
+
+
+def parse_contest_list(html: str, section_ids: Iterable[str]) -> list[Contest]:
+	"""メインの /contests/ ページから、指定セクションのコンテストを取り出す。
+
+	section_ids には ``contest-table-action`` (開催中) などの ``<div>`` の id を
+	渡す。アーカイブに含まれない開催中/予定/デイリーのコンテストを拾うために使う。
+	存在しない/空のセクションは無視する。
+	"""
+	soup = make_soup(html)
+	contests: list[Contest] = []
+	for section_id in section_ids:
+		section = soup.find(id=section_id)
+		if not isinstance(section, Tag):
+			continue
+		table = section.find("table")
+		if isinstance(table, Tag):
+			contests.extend(_parse_contest_rows(table))
 	return contests
 
 
