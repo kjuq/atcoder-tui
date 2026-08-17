@@ -30,6 +30,8 @@ uv sync
 
 ```bash
 uv run atcoder-tui
+# or
+mise exec --cd /path/to/repo -- uv run atcoder-tui
 ```
 
 起動後の流れ:
