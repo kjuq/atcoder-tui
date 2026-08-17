@@ -121,6 +121,7 @@ class AtcoderApp(App[None]):
 		Binding("w", "select_language", "Language"),
 		Binding("E", "show_event_log", "Event log"),
 		Binding("question_mark", "help", "Help"),
+		Binding("escape", "quit", "Quit", show=False),
 		Binding("q", "quit", "Quit"),
 		Binding("1", "focus_problems", "Problems", show=False),
 		Binding("2", "focus_results", "Results", show=False),
