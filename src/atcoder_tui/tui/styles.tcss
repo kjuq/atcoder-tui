@@ -1,5 +1,13 @@
 /* lazygit 風: 左に積んだパネル + 右に大きな本文。フォーカス中のパネルを強調。 */
 
+/* Textual's equivalent of a NONE background is transparent. */
+App,
+Screen,
+Header,
+DataTable {
+	background: transparent;
+}
+
 #body {
 	height: 1fr;
 }
@@ -48,6 +56,12 @@
 	height: auto;
 }
 
+/* Keep inline code readable without the default warning-colored background. */
+#statement-md MarkdownBlock > .code_inline {
+	background: transparent !important;
+	color: $warning !important;
+}
+
 #status-bar {
 	dock: bottom;
 	width: 100%;
@@ -66,6 +80,7 @@
 /* モーダル共通 */
 ModalScreen {
 	align: center middle;
+	background: transparent;
 }
 
 #login-dialog,
@@ -76,7 +91,7 @@ ModalScreen {
 	max-height: 80%;
 	padding: 1 2;
 	border: thick $accent;
-	background: $surface;
+	background: transparent;
 }
 
 #contest-dialog {
@@ -84,7 +99,7 @@ ModalScreen {
 	height: 80%;
 	padding: 1 2;
 	border: thick $accent;
-	background: $surface;
+	background: transparent;
 }
 
 #event-log-dialog {
@@ -92,7 +107,7 @@ ModalScreen {
 	height: 80%;
 	padding: 1 2;
 	border: thick $accent;
-	background: $surface;
+	background: transparent;
 }
 
 #event-log-list {
