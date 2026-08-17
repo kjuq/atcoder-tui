@@ -14,7 +14,12 @@ from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, ListView
 
 from ..client import AtCoderClient, AtCoderError
-from ..config import load_last_contest, save_last_contest
+from ..config import (
+	load_last_contest,
+	load_problem_markdown_cache,
+	save_last_contest,
+	save_problem_markdown_cache,
+)
 from ..markdown import html_to_markdown
 from ..models import Contest, Problem, ProblemSummary
 from ..tester import TesterError, parse_time_limit, run_samples
@@ -269,14 +274,30 @@ class AtcoderApp(App[None]):
 			self.notify(str(exc), severity="error")
 			return
 		self.results.show_samples(problem.samples)
-		self.statement.show_message(
-			f"# {problem.index} - {problem.title}\n\nConverting to Markdown (defuddle)..."
-		)
 		markdown = await asyncio.to_thread(
-			html_to_markdown,
-			problem.statement_html or "",
-			title=f"{problem.index} - {problem.title}",
+			load_problem_markdown_cache, problem.contest_id, problem.task_id
 		)
+		if markdown is None:
+			self.statement.show_message(
+				f"# {problem.index} - {problem.title}\n\n"
+				"Converting to Markdown (defuddle)..."
+			)
+			markdown = await asyncio.to_thread(
+				html_to_markdown,
+				problem.statement_html or "",
+				title=f"{problem.index} - {problem.title}",
+			)
+			await asyncio.to_thread(
+				save_problem_markdown_cache,
+				problem.contest_id,
+				problem.task_id,
+				markdown,
+			)
+		else:
+			self.statement.show_message(
+				f"# {problem.index} - {problem.title}\n\n"
+				"Loaded Markdown from cache."
+			)
 		problem.markdown = markdown
 		self.current_problem = problem
 		self.statement.show_problem(problem)

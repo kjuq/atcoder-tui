@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import platformdirs
@@ -33,6 +34,45 @@ def session_path() -> Path:
 def contests_cache_path() -> Path:
 	"""コンテスト一覧のキャッシュ (JSON) の保存先。"""
 	return config_dir() / "contests.json"
+
+
+def cache_dir() -> Path:
+	"""問題文 Markdown などのキャッシュを置くディレクトリ。"""
+	base = os.environ.get("XDG_CACHE_HOME")
+	path = Path(base) if base else Path.home() / ".cache"
+	path = path / APP_NAME
+	path.mkdir(parents=True, exist_ok=True)
+	return path
+
+
+def problem_markdown_cache_path(contest_id: str, task_id: str) -> Path:
+	"""問題文 Markdown キャッシュの保存先。"""
+	path = cache_dir() / contest_id / f"{task_id}.md"
+	path.parent.mkdir(parents=True, exist_ok=True)
+	return path
+
+
+def load_problem_markdown_cache(contest_id: str, task_id: str) -> str | None:
+	"""問題文 Markdown をキャッシュから読み込む。"""
+	try:
+		return problem_markdown_cache_path(contest_id, task_id).read_text(
+			encoding="utf-8"
+		)
+	except OSError:
+		return None
+
+
+def save_problem_markdown_cache(
+	contest_id: str, task_id: str, markdown: str
+) -> None:
+	"""問題文 Markdown をキャッシュへ保存する。"""
+	try:
+		problem_markdown_cache_path(contest_id, task_id).write_text(
+			markdown, encoding="utf-8"
+		)
+	except OSError:
+		# キャッシュ保存に失敗しても、問題の表示自体は成功扱いにする。
+		pass
 
 
 def last_contest_path() -> Path:

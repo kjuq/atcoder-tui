@@ -151,10 +151,57 @@ def test_app_layout_and_flow() -> None:
 			)
 			await pilot.press("escape")
 
-	with patch(
-		"atcoder_tui.tui.app.html_to_markdown", return_value="変換済み本文"
+	with (
+		patch(
+			"atcoder_tui.tui.app.load_problem_markdown_cache",
+			return_value=None,
+		),
+		patch("atcoder_tui.tui.app.save_problem_markdown_cache"),
+		patch(
+			"atcoder_tui.tui.app.html_to_markdown", return_value="変換済み本文"
+		),
 	):
 		asyncio.run(scenario())
+
+
+def test_problem_statement_uses_cached_markdown() -> None:
+	async def scenario() -> None:
+		app = AtcoderApp(client=FakeClient())
+		summary = ProblemSummary(
+			"abc086", "abc086_a", "A", "Product", "https://x/a"
+		)
+		async with app.run_test() as pilot:
+			app.load_problem(summary)
+			assert await _wait_until(
+				app,
+				pilot,
+				lambda: app.current_problem is not None
+				and "converted markdown" in app.query_one("#statement-md", Markdown).source,
+			)
+
+			app.load_problem(summary)
+			assert await _wait_until(
+				app,
+				pilot,
+				lambda: "cached markdown" in app.query_one("#statement-md", Markdown).source,
+			)
+
+	with (
+		patch(
+			"atcoder_tui.tui.app.load_problem_markdown_cache",
+			side_effect=[None, "cached markdown"],
+		) as load_cache,
+		patch("atcoder_tui.tui.app.save_problem_markdown_cache") as save_cache,
+		patch(
+			"atcoder_tui.tui.app.html_to_markdown",
+			return_value="converted markdown",
+		) as convert,
+	):
+		asyncio.run(scenario())
+
+	assert load_cache.call_count == 2
+	convert.assert_called_once()
+	save_cache.assert_called_once_with("abc086", "abc086_a", "converted markdown")
 
 
 def test_contest_search_highlight_and_slash_focus() -> None:
