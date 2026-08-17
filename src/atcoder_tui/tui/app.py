@@ -16,7 +16,7 @@ from textual.app import App, ComposeResult, SuspendNotSupported
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import DataTable, Footer, Header, Label, ListView
+from textual.widgets import DataTable, Header, Label, ListView
 
 # Textual defaults to a 100 ms delay to distinguish Esc from an escape
 # sequence. atcoder-tui doesn't need that much delay for its TUI controls.
@@ -198,7 +198,6 @@ class AtcoderApp(App[None]):
 				yield ResultsPanel(id="results-panel")
 			yield StatementPanel(id="statement-panel")
 		with Horizontal(id="status-bar"):
-			yield Footer(show_command_palette=False)
 			yield Label(id="language-status")
 
 	def on_mount(self) -> None:
