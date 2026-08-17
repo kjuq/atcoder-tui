@@ -38,6 +38,9 @@ DataTable {
 	border: round $primary;
 	border-title-align: left;
 	padding: 0 1;
+	scrollbar-background: transparent;
+	scrollbar-background-hover: transparent;
+	scrollbar-background-active: transparent;
 }
 
 /* フォーカス中のパネルをアクセントカラーで縁取る (lazygit のアクティブ枠)。 */

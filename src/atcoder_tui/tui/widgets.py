@@ -6,6 +6,7 @@ from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
+from textual.scrollbar import ScrollBarRender
 from textual.widgets import DataTable, Label, ListItem, ListView, Markdown
 
 from ..models import (
@@ -51,6 +52,18 @@ class ProblemList(ListView):
 		Binding("j", "cursor_down", "Down", show=False),
 		Binding("k", "cursor_up", "Up", show=False),
 	]
+
+
+class TransparentTrackScrollBarRender(ScrollBarRender):
+	"""Render only the scrollbar thumb, leaving the panel beneath visible."""
+
+	@classmethod
+	def render_bar(cls, *args, **kwargs):
+		# ``None`` means no background in Rich.  Using an RGBA-looking Rich
+		# Color here would still paint the track (and is not a valid Rich
+		# color), hiding the border below it.
+		kwargs["back_color"] = None
+		return super().render_bar(*args, **kwargs)
 
 
 class ResultsPanel(DataTable):
@@ -103,6 +116,18 @@ class StatementPanel(VerticalScroll):
 		Binding("j", "scroll_down", "Down", show=False),
 		Binding("k", "scroll_up", "Up", show=False),
 	]
+
+	def _arrange_scrollbars(self, region):
+		"""Draw the vertical scrollbar over the panel's right border."""
+		for scrollbar, scrollbar_region in super()._arrange_scrollbars(region):
+			if scrollbar is getattr(self, "_vertical_scrollbar", None):
+				scrollbar.renderer = TransparentTrackScrollBarRender
+				scrollbar_region = scrollbar_region.translate((2, 0))
+				# The scrollbar is rendered above the panel, so the panel's
+				# right border would otherwise be hidden by the scrollbar widget.
+				# Draw the same edge as an outline on top of the scrollbar.
+				scrollbar.styles.outline_right = self.styles.border_right
+			yield scrollbar, scrollbar_region
 
 	def compose(self) -> ComposeResult:
 		yield Markdown(id="statement-md")
