@@ -1,0 +1,701 @@
+{
+  "source_url": "https://img.atcoder.jp/file/language-update/2025-10/language-list.html",
+  "languages": [
+    {
+      "id": "fishr",
+      "name": "><> (fishr 0.1.0)",
+      "family": "fishr",
+      "extension": "fish"
+    },
+    {
+      "id": "apl",
+      "name": "APL (GNU APL 1.9)",
+      "family": "apl",
+      "extension": "apl"
+    },
+    {
+      "id": "awk",
+      "name": "AWK (GNU awk 5.2.1)",
+      "family": "awk",
+      "extension": "awk"
+    },
+    {
+      "id": "ada",
+      "name": "Ada 2022 (GNAT 15.2.0)",
+      "family": "ada",
+      "extension": "adb"
+    },
+    {
+      "id": "asm-mips",
+      "name": "Assembly MIPS O32 ABI (GNU assembler 2.42)",
+      "family": "asm-mips",
+      "extension": "s"
+    },
+    {
+      "id": "asm-x64",
+      "name": "Assembly x64 (NASM 2.16.03)",
+      "family": "asm-x64",
+      "extension": "asm"
+    },
+    {
+      "id": "a-lang",
+      "name": "A言語 (interpreter af48a2a)",
+      "family": "a-lang",
+      "extension": "a"
+    },
+    {
+      "id": "basic",
+      "name": "BASIC (FreeBASIC 1.10.1)",
+      "family": "basic",
+      "extension": "bas"
+    },
+    {
+      "id": "bash",
+      "name": "Bash (bash 5.3)",
+      "family": "bash",
+      "extension": "bash"
+    },
+    {
+      "id": "befunge",
+      "name": "Befunge93 (TBC 1.0)",
+      "family": "befunge",
+      "extension": "bf"
+    },
+    {
+      "id": "brainfuck",
+      "name": "Brainfuck (Tritium 1.2.73)",
+      "family": "brainfuck",
+      "extension": "bf"
+    },
+    {
+      "id": "csharp-dotnet",
+      "name": "C# 13.0 (.NET 9.0.8)",
+      "family": "csharp",
+      "extension": "cs"
+    },
+    {
+      "id": "csharp-aot",
+      "name": "C# 13.0 (.NET Native AOT 9.0.8)",
+      "family": "csharp",
+      "extension": "cs"
+    },
+    {
+      "id": "cpp-ioi",
+      "name": "C++ IOI-Style(GNU++20) (GCC 14.2.0)",
+      "family": "cpp",
+      "extension": "cpp"
+    },
+    {
+      "id": "cpp-clang",
+      "name": "C++23 (Clang 21.1.0)",
+      "family": "cpp",
+      "extension": "cpp"
+    },
+    {
+      "id": "cpp",
+      "name": "C++23 (GCC 15.2.0)",
+      "family": "cpp",
+      "extension": "cpp"
+    },
+    {
+      "id": "c-clang",
+      "name": "C23 (Clang 21.1.0)",
+      "family": "c",
+      "extension": "c"
+    },
+    {
+      "id": "c",
+      "name": "C23 (GCC 14.2.0)",
+      "family": "c",
+      "extension": "c"
+    },
+    {
+      "id": "c3",
+      "name": "C3 (c3c 0.7.5)",
+      "family": "c3",
+      "extension": "c3"
+    },
+    {
+      "id": "cobol",
+      "name": "COBOL (Free) (GnuCOBOL 3.2)",
+      "family": "cobol",
+      "extension": "cbl"
+    },
+    {
+      "id": "carp",
+      "name": "Carp(Carp 0.5.5)",
+      "family": "carp",
+      "extension": "carp"
+    },
+    {
+      "id": "clojure-aot",
+      "name": "Clojure (Clojure AOT 1.12.2)",
+      "family": "clojure",
+      "extension": "clj"
+    },
+    {
+      "id": "clojurescript",
+      "name": "Clojure (ClojureScript 1.12.42 (Clojure 1.12.2 Node.js 22.19.0))",
+      "family": "clojurescript",
+      "extension": "cljs"
+    },
+    {
+      "id": "babashka",
+      "name": "Clojure (babashka 1.12.208)",
+      "family": "clojure",
+      "extension": "clj"
+    },
+    {
+      "id": "clojure",
+      "name": "Clojure (clojure 1.12.2)",
+      "family": "clojure",
+      "extension": "clj"
+    },
+    {
+      "id": "common lisp",
+      "name": "Common Lisp (SBCL 2.5.8)",
+      "family": "common lisp",
+      "extension": "lisp"
+    },
+    {
+      "id": "crystal",
+      "name": "Crystal (Crystal 1.17.0)",
+      "family": "crystal",
+      "extension": "cr"
+    },
+    {
+      "id": "cyber",
+      "name": "Cyber (Cyber v0.3)",
+      "family": "cyber",
+      "extension": "cy"
+    },
+    {
+      "id": "d-dmd",
+      "name": "D (DMD 2.111.0)",
+      "family": "d",
+      "extension": "d"
+    },
+    {
+      "id": "d-gdc",
+      "name": "D (GDC 15.2)",
+      "family": "d",
+      "extension": "d"
+    },
+    {
+      "id": "d-ldc",
+      "name": "D (LDC 1.41.0)",
+      "family": "d",
+      "extension": "d"
+    },
+    {
+      "id": "dart",
+      "name": "Dart (Dart 3.9.2)",
+      "family": "dart",
+      "extension": "dart"
+    },
+    {
+      "id": "eclipse",
+      "name": "ECLiPSe (ECLiPSe 7.1_13)",
+      "family": "eclipse",
+      "extension": "ecl"
+    },
+    {
+      "id": "eiffel-gobo",
+      "name": "Eiffel (Gobo Eiffel 22.01)",
+      "family": "eiffel",
+      "extension": "e"
+    },
+    {
+      "id": "eiffel-liberty",
+      "name": "Eiffel (Liberty Eiffel 07829e3)",
+      "family": "eiffel",
+      "extension": "e"
+    },
+    {
+      "id": "elixir",
+      "name": "Elixir (Elixir 1.18.4 (OTP 28.0.2))",
+      "family": "elixir",
+      "extension": "ex"
+    },
+    {
+      "id": "emacs lisp",
+      "name": "Emacs Lisp(Native Compile)(GNU Emacs 29.4)",
+      "family": "emacs lisp",
+      "extension": "el"
+    },
+    {
+      "id": "emojicode",
+      "name": "Emojicode 1.0 beta 2 (emojicodec 1.0 beta 2)",
+      "family": "emojicode",
+      "extension": "🍇"
+    },
+    {
+      "id": "erlang",
+      "name": "Erlang (Erlang 28.0.2)",
+      "family": "erlang",
+      "extension": "erl"
+    },
+    {
+      "id": "f#",
+      "name": "F# 9.0 (.NET 9.0.8)",
+      "family": "f#",
+      "extension": "fs"
+    },
+    {
+      "id": "fortran77",
+      "name": "FORTRAN77 (GCC 14.2.0)",
+      "family": "fortran77",
+      "extension": "f"
+    },
+    {
+      "id": "factor",
+      "name": "Factor (Factor 0.100)",
+      "family": "factor",
+      "extension": "factor"
+    },
+    {
+      "id": "fish",
+      "name": "Fish (fish 4.0.2)",
+      "family": "fish",
+      "extension": "fish"
+    },
+    {
+      "id": "fix",
+      "name": "Fix (1.1.0-alpha.12)",
+      "family": "fix",
+      "extension": "fix"
+    },
+    {
+      "id": "forth",
+      "name": "Forth (gforth 0.7.3)",
+      "family": "forth",
+      "extension": "fs"
+    },
+    {
+      "id": "fortran2018",
+      "name": "Fortran2018 (Flang 20.1.7)",
+      "family": "fortran2018",
+      "extension": "f90"
+    },
+    {
+      "id": "fortran2023",
+      "name": "Fortran2023 (GCC 14.2.0)",
+      "family": "fortran2023",
+      "extension": "f90"
+    },
+    {
+      "id": "gleam",
+      "name": "Gleam (Gleam 1.12.0 (OTP 28.0.2))",
+      "family": "gleam",
+      "extension": "gleam"
+    },
+    {
+      "id": "go",
+      "name": "Go (go 1.25.1)",
+      "family": "go",
+      "extension": "go"
+    },
+    {
+      "id": "go-gccgo",
+      "name": "Go 1.18 (gccgo 15.2.0)",
+      "family": "go",
+      "extension": "go"
+    },
+    {
+      "id": "haskell",
+      "name": "Haskell (GHC 9.8.4)",
+      "family": "haskell",
+      "extension": "hs"
+    },
+    {
+      "id": "haxe",
+      "name": "Haxe/JVM 4.3.7 (hxjava 4.2.0)",
+      "family": "haxe",
+      "extension": "hx"
+    },
+    {
+      "id": "islisp",
+      "name": "ISLisp (Easy-ISLisp 5.43)",
+      "family": "islisp",
+      "extension": "lsp"
+    },
+    {
+      "id": "java",
+      "name": "Java24 (OpenJDK 24.0.2)",
+      "family": "java",
+      "extension": "java"
+    },
+    {
+      "id": "javascript-bun",
+      "name": "JavaScript (Bun 1.2.21)",
+      "family": "javascript",
+      "extension": "js"
+    },
+    {
+      "id": "javascript-deno",
+      "name": "JavaScript (Deno 2.4.5)",
+      "family": "javascript",
+      "extension": "js"
+    },
+    {
+      "id": "javascript",
+      "name": "JavaScript (Node.js 22.19.0)",
+      "family": "javascript",
+      "extension": "js"
+    },
+    {
+      "id": "jule",
+      "name": "Jule (jule 0.1.6)",
+      "family": "jule",
+      "extension": "jule"
+    },
+    {
+      "id": "julia",
+      "name": "Julia (Julia 1.11.6)",
+      "family": "julia",
+      "extension": "jl"
+    },
+    {
+      "id": "koka",
+      "name": "Koka (koka v3.2.2)",
+      "family": "koka",
+      "extension": "kk"
+    },
+    {
+      "id": "kotlin",
+      "name": "Kotlin (Kotlin/JVM 2.2.10)",
+      "family": "kotlin",
+      "extension": "kt"
+    },
+    {
+      "id": "kuin",
+      "name": "Kuin (kuincl v.2021.8.17)",
+      "family": "kuin",
+      "extension": "kn"
+    },
+    {
+      "id": "llvm",
+      "name": "LLVM IR (Clang 21.1.0)",
+      "family": "llvm",
+      "extension": "ll"
+    },
+    {
+      "id": "lazy k",
+      "name": "Lazy K (irori v1.0.0)",
+      "family": "lazy k",
+      "extension": "lazy"
+    },
+    {
+      "id": "lean",
+      "name": "Lean (lean v4.22.0)",
+      "family": "lean",
+      "extension": "lean"
+    },
+    {
+      "id": "lua",
+      "name": "Lua (Lua 5.4.7)",
+      "family": "lua",
+      "extension": "lua"
+    },
+    {
+      "id": "luajit",
+      "name": "Lua (LuaJIT 2.1.1703358377)",
+      "family": "lua",
+      "extension": "lua"
+    },
+    {
+      "id": "mercury",
+      "name": "Mercury (Mercury 22.01.8)",
+      "family": "mercury",
+      "extension": "m"
+    },
+    {
+      "id": "nim-1",
+      "name": "Nim (Nim 1.6.20)",
+      "family": "nim",
+      "extension": "nim"
+    },
+    {
+      "id": "nim-2",
+      "name": "Nim (Nim 2.2.4)",
+      "family": "nim",
+      "extension": "nim"
+    },
+    {
+      "id": "ocaml",
+      "name": "OCaml (ocamlopt 5.3.0)",
+      "family": "ocaml",
+      "extension": "ml"
+    },
+    {
+      "id": "octave",
+      "name": "Octave (GNU Octave 10.2.0)",
+      "family": "octave",
+      "extension": "m"
+    },
+    {
+      "id": "php",
+      "name": "PHP (PHP 8.4.12)",
+      "family": "php",
+      "extension": "php"
+    },
+    {
+      "id": "pascal",
+      "name": "Pascal (fpc 3.2.2)",
+      "family": "pascal",
+      "extension": "p"
+    },
+    {
+      "id": "perl",
+      "name": "Perl (perl 5.38.2)",
+      "family": "perl",
+      "extension": "pl"
+    },
+    {
+      "id": "piet",
+      "name": "Piet (your-diary/piet_programming_language 3.0.0) (PPM image)",
+      "family": "piet",
+      "extension": "ppm"
+    },
+    {
+      "id": "pony",
+      "name": "Pony (ponyc 0.59.0)",
+      "family": "pony",
+      "extension": "pony"
+    },
+    {
+      "id": "powershell",
+      "name": "PowerShell (PowerShell 7.5.2)",
+      "family": "powershell",
+      "extension": "ps1"
+    },
+    {
+      "id": "prolog",
+      "name": "Prolog (SWI-Prolog 9.2.9)",
+      "family": "prolog",
+      "extension": "pl"
+    },
+    {
+      "id": "python",
+      "name": "Python (CPython 3.13.7)",
+      "family": "python",
+      "extension": "py"
+    },
+    {
+      "id": "python-codon",
+      "name": "Python (Codon 0.19.3)",
+      "family": "python",
+      "extension": "py"
+    },
+    {
+      "id": "pypy",
+      "name": "Python (PyPy 3.11-v7.3.20)",
+      "family": "pypy",
+      "extension": "py"
+    },
+    {
+      "id": "r",
+      "name": "R (GNU R 4.5.0)",
+      "family": "r",
+      "extension": "R"
+    },
+    {
+      "id": "reasonml",
+      "name": "ReasonML (reson 3.16.0)",
+      "family": "reasonml",
+      "extension": "re"
+    },
+    {
+      "id": "ruby-truffle",
+      "name": "Ruby 3.3 (truffleruby 25.0.0)",
+      "family": "ruby",
+      "extension": "rb"
+    },
+    {
+      "id": "ruby",
+      "name": "Ruby 3.4 (ruby 3.4.5)",
+      "family": "ruby",
+      "extension": "rb"
+    },
+    {
+      "id": "rust",
+      "name": "Rust (rustc 1.89.0)",
+      "family": "rust",
+      "extension": "rs"
+    },
+    {
+      "id": "sql",
+      "name": "SQL (DuckDB 1.3.2)",
+      "family": "sql",
+      "extension": "sql"
+    },
+    {
+      "id": "sagemath",
+      "name": "SageMath (SageMath 10.7)",
+      "family": "sagemath",
+      "extension": "sage"
+    },
+    {
+      "id": "scala",
+      "name": "Scala (Dotty 3.7.2)",
+      "family": "scala",
+      "extension": "scala"
+    },
+    {
+      "id": "scala-native",
+      "name": "Scala 3.7.2 (Scala Native 0.5.8)",
+      "family": "scala",
+      "extension": "scala"
+    },
+    {
+      "id": "scheme-chez",
+      "name": "Scheme (ChezScheme 10.2.0)",
+      "family": "scheme",
+      "extension": "scm"
+    },
+    {
+      "id": "scheme-gauche",
+      "name": "Scheme (Gauche 0.9.15)",
+      "family": "scheme",
+      "extension": "scm"
+    },
+    {
+      "id": "seed7",
+      "name": "Seed7 (Seed7 3.5.0)",
+      "family": "seed7",
+      "extension": "sd7"
+    },
+    {
+      "id": "swift",
+      "name": "Swift 6.2",
+      "family": "swift",
+      "extension": "swift"
+    },
+    {
+      "id": "tcl",
+      "name": "Tcl (tclsh 9.0.1)",
+      "family": "tcl",
+      "extension": "tcl"
+    },
+    {
+      "id": "tex",
+      "name": "TeX (tex 3.141592653)",
+      "family": "tex",
+      "extension": "tex"
+    },
+    {
+      "id": "terra",
+      "name": "Terra (Terra 1.2.0)",
+      "family": "terra",
+      "extension": "t"
+    },
+    {
+      "id": "text",
+      "name": "Text (cat 9.4)",
+      "family": "text",
+      "extension": "text"
+    },
+    {
+      "id": "typescript-deno",
+      "name": "TypeScript 5.8 (Deno 2.4.5)",
+      "family": "typescript",
+      "extension": "ts"
+    },
+    {
+      "id": "typescript-bun",
+      "name": "TypeScript 5.9 (tsc 5.9.2 (Bun 1.2.21))",
+      "family": "typescript",
+      "extension": "ts"
+    },
+    {
+      "id": "typescript",
+      "name": "TypeScript 5.9 (tsc 5.9.2 (Node.js 22.19.0))",
+      "family": "typescript",
+      "extension": "ts"
+    },
+    {
+      "id": "uiua",
+      "name": "Uiua (uiua 0.16.2)",
+      "family": "uiua",
+      "extension": "ua"
+    },
+    {
+      "id": "unison",
+      "name": "Unison (Unison 0.5.47)",
+      "family": "unison",
+      "extension": "u"
+    },
+    {
+      "id": "v",
+      "name": "V (0.4.10)",
+      "family": "v",
+      "extension": "v"
+    },
+    {
+      "id": "vala",
+      "name": "Vala (valac 0.56.18)",
+      "family": "vala",
+      "extension": "vala"
+    },
+    {
+      "id": "verilog",
+      "name": "Verilog 2012 (Icarus Verilog 12.0)",
+      "family": "verilog",
+      "extension": "v"
+    },
+    {
+      "id": "veryl",
+      "name": "Veryl (veryl 0.16.4)",
+      "family": "veryl",
+      "extension": "veryl"
+    },
+    {
+      "id": "webassembly",
+      "name": "WebAssembly (wabt 1.0.34 + iwasm 2.4.1)",
+      "family": "webassembly",
+      "extension": "wat"
+    },
+    {
+      "id": "whitespace",
+      "name": "Whitespace (whitespacers 1.3.0)",
+      "family": "whitespace",
+      "extension": "ws"
+    },
+    {
+      "id": "zig",
+      "name": "Zig (Zig 0.15.1)",
+      "family": "zig",
+      "extension": "zig"
+    },
+    {
+      "id": "bc",
+      "name": "bc (GNU bc 1.08.2)",
+      "family": "bc",
+      "extension": "bc"
+    },
+    {
+      "id": "clay",
+      "name": "cLay (cLay 20250308-1 (GCC 15.2.0))",
+      "family": "clay",
+      "extension": "clay"
+    },
+    {
+      "id": "dc",
+      "name": "dc 1.5.2 (GNU bc 1.08.2)",
+      "family": "dc",
+      "extension": "dc"
+    },
+    {
+      "id": "なでしこ",
+      "name": "なでしこ (cnako3 3.7.8 (Node.js 22.19.0))",
+      "family": "なでしこ",
+      "extension": "nako3"
+    },
+    {
+      "id": "プロデル",
+      "name": "プロデル (mono版プロデル 2.0.1353)",
+      "family": "プロデル",
+      "extension": "rdr"
+    }
+  ]
+}

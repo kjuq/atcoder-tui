@@ -52,6 +52,23 @@ $ATCODER_TUI_REPO_BASE/abc471/a/main.py
 
 言語はホーム画面で `w` を押して選択します。選択中の言語はステータスバーに表示され、設定は終了後も保持されます。
 
+### 言語一覧の更新
+
+提出言語の一覧は [AtCoder の公式言語一覧](https://img.atcoder.jp/file/language-update/2025-10/language-list.html) を元に、`src/atcoder_tui/data/languages.json` に保存しています。AtCoder で言語やバージョンが更新されたときは、リポジトリのルートで次を実行してください。
+
+```bash
+uv run python scripts/update_languages.py
+```
+
+AtCoder が新しい言語一覧ページを公開して既定 URL が変わった場合は、URL を指定します。
+
+```bash
+uv run python scripts/update_languages.py \
+  --url https://img.atcoder.jp/file/language-update/YYYY-MM/language-list.html
+```
+
+更新前に差分だけ確認する場合は `--check` を使えます。更新後は `languages.json` の差分を確認してコミットしてください。言語名・ファイル拡張子の抽出はスクリプトが行いますが、ローカルのサンプルテスト用コマンドは `src/atcoder_tui/tester.py` で管理しています。
+
 ### ログインについて
 
 AtCoder のログインフォームは Cloudflare Turnstile (CAPTCHA の一種) で保護されているため、ユーザ名/パスワードを HTTP で送るだけのログインはできません。本ツールはブラウザのセッション Cookie を取り込む方式を採用しています。

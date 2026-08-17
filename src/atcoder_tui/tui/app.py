@@ -113,7 +113,12 @@ class AtcoderApp(App[None]):
 		self.problems: list[ProblemSummary] = []
 		self.current_problem: Problem | None = None
 		self.submission_language = (
-			load_submission_language() or DEFAULT_SUBMISSION_LANGUAGES[0]
+			load_submission_language()
+			or next(
+				language
+				for language in DEFAULT_SUBMISSION_LANGUAGES
+				if language.id == "python"
+			)
 		)
 
 	# -- レイアウト ----------------------------------------------------
