@@ -8,8 +8,11 @@ from pathlib import Path
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.css.query import NoMatches
+from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, ListView, Select, Static
+from textual.widgets._select import SelectCurrent, SelectOverlay
 
 from ..models import Contest, Language, Problem
 from .widgets import ContestItem
@@ -256,6 +259,105 @@ class ConfirmScreen(ModalScreen[bool]):
 		self.dismiss(False)
 
 
+class LanguageSearchChanged(Message):
+	"""言語プルダウン内の検索文字列が変わったことを通知する。"""
+
+	def __init__(self, query: str) -> None:
+		super().__init__()
+		self.query = query
+
+
+class LanguageSelectOverlay(SelectOverlay):
+	"""文字入力で候補を絞り込める言語選択用のオーバーレイ。"""
+
+	def __init__(self) -> None:
+		super().__init__(type_to_search=False)
+
+	async def _on_key(self, event: events.Key) -> None:
+		parent = self.parent
+		query = getattr(parent, "_filter_query", "")
+		new_query: str | None = None
+		if event.key == "backspace":
+			new_query = query[:-1]
+		elif event.key == "ctrl+w":
+			trimmed = query.rstrip()
+			separator = trimmed.rfind(" ")
+			new_query = trimmed[:separator] if separator >= 0 else ""
+		elif event.key == "ctrl+u":
+			new_query = ""
+		elif event.character is not None and event.is_printable:
+			new_query = query + event.character
+
+		if new_query is not None:
+			event.stop()
+			event.prevent_default()
+			self.post_message(LanguageSearchChanged(new_query))
+
+
+class LanguageSelect(Select[str]):
+	"""選択中の文字入力で言語候補を部分一致検索する Select。"""
+
+	def __init__(self, options: list[tuple[str, str]], **kwargs: object) -> None:
+		self._all_options = options
+		self._filter_query = ""
+		super().__init__(options, **kwargs)
+
+	def compose(self) -> ComposeResult:
+		yield SelectCurrent(self.prompt)
+		yield LanguageSelectOverlay().data_bind(compact=Select.compact)
+
+	def action_show_overlay(self) -> None:
+		# Esc で閉じた後に前回の検索文字列を持ち越さない。
+		self._filter_query = ""
+		self._apply_filter()
+		super().action_show_overlay()
+
+	def _filtered_options(self) -> list[tuple[str, str]]:
+		query = self._filter_query.casefold()
+		return [
+			option
+			for option in self._all_options
+			if not query or query in option[0].casefold()
+		]
+
+	def _apply_filter(self) -> None:
+		selected = self.value
+		options = self._filtered_options()
+		option_ids = {language_id for _, language_id in options}
+		super().set_options(options)
+		self.value = selected if selected in option_ids else Select.NULL
+		self._update_search_display()
+
+	def _update_search_display(self) -> None:
+		"""検索中は入力文字列を Select の現在値表示に出す。"""
+		try:
+			current = self.query_one(SelectCurrent)
+		except NoMatches:
+			# compose 前は SelectCurrent がまだ存在しない。
+			return
+		if self._filter_query:
+			current.update(f"検索: {self._filter_query}")
+			return
+		if self.value == self.NULL:
+			current.update(self.NULL)
+			return
+		for prompt, value in self._options:
+			if value == self.value:
+				current.update(prompt)
+				return
+
+	def _update_selection(self, event: SelectOverlay.UpdateSelection) -> None:
+		"""選択確定時は検索表示を選択した言語名へ戻す。"""
+		super()._update_selection(event)
+		self._filter_query = ""
+		self._update_search_display()
+
+	def on_language_search_changed(self, event: LanguageSearchChanged) -> None:
+		event.stop()
+		self._filter_query = event.query
+		self._apply_filter()
+
+
 class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
 	"""提出するソースファイルと言語を選ぶ画面。
 
@@ -271,6 +373,7 @@ class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
 		self._problem = problem
 		self._languages = languages
 		self._default_path = default_path
+		self._selected_language_id = self._default_language()
 
 	def _default_language(self) -> str | None:
 		for lang in self._languages:
@@ -279,7 +382,6 @@ class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
 		return self._languages[0].id if self._languages else None
 
 	def compose(self) -> ComposeResult:
-		options = [(lang.name, lang.id) for lang in self._languages]
 		with Vertical(id="submit-dialog"):
 			yield Label(
 				f"提出: {self._problem.index} - {self._problem.title}",
@@ -290,9 +392,10 @@ class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
 				value=self._default_path, id="submit-path", classes="dialog-field"
 			)
 			yield Label("言語", classes="dialog-field")
-			yield Select(
-				options,
-				value=self._default_language(),
+			yield LanguageSelect(
+				[(lang.name, lang.id) for lang in self._languages],
+				prompt="言語を選択 (入力で絞り込み)",
+				value=self._selected_language_id,
 				allow_blank=True,
 				id="submit-lang",
 			)
@@ -336,11 +439,11 @@ class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
 
 	def _submit(self) -> None:
 		raw = self.query_one("#submit-path", Input).value.strip()
-		lang_value = self.query_one("#submit-lang", Select).value
+		lang_value = self.query_one("#submit-lang", LanguageSelect).value
 		if not raw:
 			self.notify("ファイルパスを入力してください", severity="warning")
 			return
-		if lang_value is Select.BLANK or lang_value is None:
+		if lang_value is Select.NULL or lang_value is None:
 			self.notify("言語を選択してください", severity="warning")
 			return
 		lang_id = str(lang_value)

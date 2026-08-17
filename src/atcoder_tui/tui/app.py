@@ -14,6 +14,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, ListView
 
 from ..client import AtCoderClient, AtCoderError
+from ..config import load_last_contest, save_last_contest
 from ..markdown import html_to_markdown
 from ..models import Contest, Problem, ProblemSummary
 from ..tester import TesterError, parse_time_limit, run_samples
@@ -113,6 +114,9 @@ class AtcoderApp(App[None]):
 		self._set_panel_titles()
 		self.statement.show_message(_WELCOME)
 		self.refresh_login_status()
+		last_contest = load_last_contest()
+		if last_contest:
+			self.load_contest(last_contest)
 
 	def _set_panel_titles(self) -> None:
 		self.query_one("#problems-panel").border_title = "1 Problems"
@@ -240,6 +244,7 @@ class AtcoderApp(App[None]):
 			return
 		self.contest_id = contest_id
 		self.problems = problems
+		save_last_contest(contest_id)
 		self.query_one("#problems-panel").border_title = f"1 {contest_id}"
 		await self._populate_problems(problems)
 		self.notify(f"{len(problems)} 問を取得しました")
@@ -350,7 +355,7 @@ class AtcoderApp(App[None]):
 			return
 		try:
 			languages = await asyncio.to_thread(
-				self.client.get_languages, problem.contest_id
+				self.client.get_languages, problem.contest_id, problem.task_id
 			)
 		except AtCoderError as exc:
 			self.notify(str(exc), severity="error")

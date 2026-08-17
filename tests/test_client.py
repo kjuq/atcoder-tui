@@ -19,8 +19,9 @@ def _client(tmp_path: Path) -> AtCoderClient:
 
 
 class _FakeResponse:
-	def __init__(self, text: str) -> None:
+	def __init__(self, text: str, status_code: int = 200) -> None:
 		self.text = text
+		self.status_code = status_code
 
 
 def _rows_html(rows: list[tuple[str, str]]) -> str:
@@ -75,6 +76,26 @@ def test_login_with_cookie_empty_raises(tmp_path: Path) -> None:
 	client = _client(tmp_path)
 	with pytest.raises(LoginError):
 		client.login_with_cookie("   ")
+
+
+def test_get_languages_reads_problem_page(tmp_path: Path, monkeypatch) -> None:
+	client = _client(tmp_path)
+	seen: list[str] = []
+
+	def fake_get(url: str, **kwargs: object) -> _FakeResponse:
+		seen.append(url)
+		return _FakeResponse(
+			'<form action="/contests/demo/submit">'
+			'<select name="data.LanguageId">'
+			'<option value="4006">Python</option>'
+			"</select></form>"
+		)
+
+	monkeypatch.setattr(client, "_get", fake_get)
+	languages = client.get_languages("demo", "demo_a")
+
+	assert [(lang.id, lang.name) for lang in languages] == [("4006", "Python")]
+	assert seen == ["https://atcoder.jp/contests/demo/tasks/demo_a"]
 
 
 def test_fetch_all_contests_includes_special_categories(

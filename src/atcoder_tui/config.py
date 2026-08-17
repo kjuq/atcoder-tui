@@ -33,3 +33,26 @@ def session_path() -> Path:
 def contests_cache_path() -> Path:
 	"""コンテスト一覧のキャッシュ (JSON) の保存先。"""
 	return config_dir() / "contests.json"
+
+
+def last_contest_path() -> Path:
+	"""最後に読み込んだコンテスト ID の保存先。"""
+	return config_dir() / "last_contest"
+
+
+def load_last_contest() -> str | None:
+	"""最後に読み込んだコンテスト ID を返す。保存されていなければ None。"""
+	try:
+		contest_id = last_contest_path().read_text(encoding="utf-8").strip()
+	except OSError:
+		return None
+	return contest_id or None
+
+
+def save_last_contest(contest_id: str) -> None:
+	"""最後に読み込んだコンテスト ID を保存する。"""
+	try:
+		last_contest_path().write_text(f"{contest_id}\n", encoding="utf-8")
+	except OSError:
+		# 設定の保存に失敗しても、コンテストの読み込み自体は成功扱いにする。
+		pass

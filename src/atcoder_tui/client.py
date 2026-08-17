@@ -251,13 +251,18 @@ class AtCoderClient:
 			resp.text, contest_id, task_id, url, prefer_lang=prefer_lang
 		)
 
-	def get_languages(self, contest_id: str) -> list[Language]:
-		"""提出フォームから利用可能な言語一覧を取得する (要ログイン)。"""
-		url = f"{BASE_URL}/contests/{contest_id}/submit"
+	def get_languages(self, contest_id: str, task_id: str) -> list[Language]:
+		"""問題ページに埋め込まれた提出言語一覧を取得する (要ログイン)。"""
+		url = f"{BASE_URL}/contests/{contest_id}/tasks/{task_id}"
 		resp = self._get(url, allow_redirects=False)
 		if resp.status_code != 200:
-			raise NotLoggedInError("提出フォームの取得にはログインが必要です。")
-		return parser.parse_languages(resp.text)
+			raise NotLoggedInError("提出言語の取得にはログインが必要です。")
+		languages = parser.parse_languages(resp.text)
+		if not languages:
+			raise SubmissionError(
+				"問題ページから提出言語を取得できませんでした。"
+			)
+		return languages
 
 	def get_my_submissions(self, contest_id: str) -> list[Submission]:
 		"""自分の提出一覧を取得する (要ログイン)。"""

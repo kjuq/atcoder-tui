@@ -23,6 +23,24 @@ def test_parse_csrf_token() -> None:
 	assert len(token) > 0
 
 
+def test_parse_languages() -> None:
+	html = """
+	<form action="/contests/demo/submit">
+		<div id="select-lang">
+			<select name="data.LanguageId">
+				<option value="4006">Python (CPython 3.11.4)</option>
+				<option value="5010">C++23 (GCC 12.2.0)</option>
+			</select>
+		</div>
+	</form>
+	"""
+	languages = parser.parse_languages(html)
+	assert [(lang.id, lang.name) for lang in languages] == [
+		("4006", "Python (CPython 3.11.4)"),
+		("5010", "C++23 (GCC 12.2.0)"),
+	]
+
+
 def test_parse_contest_archive() -> None:
 	html = _read("sample_archive.html")
 	contests = parser.parse_contest_archive(html)
