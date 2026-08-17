@@ -6,8 +6,8 @@ import asyncio
 
 from textual.app import App, ComposeResult
 
-from atcoder_tui.models import Language, Problem
-from atcoder_tui.tui.modals import LanguageSelect, SubmitScreen
+from atcoder_tui.models import Language
+from atcoder_tui.tui.modals import LanguageSelect, LanguageSelectScreen
 
 
 def test_language_select_filters_by_name() -> None:
@@ -34,14 +34,11 @@ def test_language_select_filters_by_name() -> None:
 	]
 
 
-def test_submit_screen_defaults_to_non_pypy_python() -> None:
-	screen = SubmitScreen(
-		Problem("demo", "demo_a", "A", "Demo", "https://example.com"),
-		[Language("4026", "PyPy 3.10"), Language("4006", "Python 3.11")],
-		"demo_a.py",
-	)
+def test_language_select_screen_keeps_selected_language() -> None:
+	languages = [Language("python", "Python"), Language("cpp", "C++")]
+	screen = LanguageSelectScreen(languages, languages[1])
 
-	assert screen._selected_language_id == "4006"
+	assert screen._selected_id == "cpp"
 
 
 class _LanguageSearchApp(App[None]):

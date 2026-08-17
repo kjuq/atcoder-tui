@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import webbrowser
-from pathlib import Path
 
 from textual import events
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
 from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, ListView, Select, Static
 from textual.widgets._select import SelectCurrent, SelectOverlay
 
-from ..models import Contest, Language, Problem
+from ..models import Contest, Language
 from .widgets import ContestItem
 
 _LOGIN_URL = "https://atcoder.jp/login"
@@ -72,49 +71,6 @@ class CookieLoginScreen(ModalScreen["str | None"]):
 		value = self.query_one("#login-cookie", Input).value.strip()
 		if not value:
 			self.notify("Enter the REVEL_SESSION value.", severity="warning")
-			return
-		self.dismiss(value)
-
-	def action_cancel(self) -> None:
-		self.dismiss(None)
-
-
-class FilePromptScreen(ModalScreen[str | None]):
-	"""Screen for entering a one-line text value, such as a file path."""
-
-	BINDINGS = [("escape", "cancel", "Cancel")]
-
-	def __init__(self, title: str, default: str = "") -> None:
-		super().__init__()
-		self._title = title
-		self._default = default
-
-	def compose(self) -> ComposeResult:
-		with Vertical(id="prompt-dialog"):
-			yield Label(self._title, classes="dialog-title")
-			yield Input(value=self._default, id="prompt-input", classes="dialog-field")
-			with Horizontal(classes="dialog-buttons"):
-				yield Button("Cancel", id="prompt-cancel")
-				yield Button("OK", variant="primary", id="prompt-ok")
-
-	def on_mount(self) -> None:
-		inp = self.query_one("#prompt-input", Input)
-		inp.focus()
-		inp.cursor_position = len(inp.value)
-
-	def on_button_pressed(self, event: Button.Pressed) -> None:
-		if event.button.id == "prompt-ok":
-			self._submit()
-		else:
-			self.dismiss(None)
-
-	def on_input_submitted(self, event: Input.Submitted) -> None:
-		self._submit()
-
-	def _submit(self) -> None:
-		value = self.query_one("#prompt-input", Input).value.strip()
-		if not value:
-			self.dismiss(None)
 			return
 		self.dismiss(value)
 
@@ -246,11 +202,10 @@ class ConfirmScreen(ModalScreen[bool]):
 			yield Label("Confirm", classes="dialog-title")
 			yield Static(self._message)
 			with Horizontal(classes="dialog-buttons"):
-				yield Button("Cancel", id="confirm-cancel")
 				yield Button(self._confirm_label, variant="error", id="confirm-ok")
 
 	def on_mount(self) -> None:
-		self.query_one("#confirm-cancel", Button).focus()
+		self.query_one("#confirm-ok", Button).focus()
 
 	def on_button_pressed(self, event: Button.Pressed) -> None:
 		self.dismiss(event.button.id == "confirm-ok")
@@ -358,99 +313,55 @@ class LanguageSelect(Select[str]):
 		self._apply_filter()
 
 
-class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
-	"""Screen for selecting a source file and submission language.
-
-	 dismiss returns a tuple of (file path, language ID, language name).
-	"""
+class LanguageSelectScreen(ModalScreen[Language | None]):
+	"""Screen for selecting the default submission language."""
 
 	BINDINGS = [("escape", "cancel", "Cancel")]
 
 	def __init__(
-		self, problem: Problem, languages: list[Language], default_path: str
+		self, languages: list[Language], selected: Language | None = None
 	) -> None:
 		super().__init__()
-		self._problem = problem
 		self._languages = languages
-		self._default_path = default_path
-		self._selected_language_id = self._default_language()
-
-	def _default_language(self) -> str | None:
-		for lang in self._languages:
-			if "Python" in lang.name and "PyPy" not in lang.name:
-				return lang.id
-		return self._languages[0].id if self._languages else None
+		self._selected_id = selected.id if selected else None
 
 	def compose(self) -> ComposeResult:
-		with Vertical(id="submit-dialog"):
-			yield Label(
-				f"Submit: {self._problem.index} - {self._problem.title}",
-				classes="dialog-title",
-			)
-			yield Label("Source file", classes="dialog-field")
-			yield Input(
-				value=self._default_path, id="submit-path", classes="dialog-field"
-			)
-			yield Label("Language", classes="dialog-field")
+		with Vertical(id="language-dialog"):
+			yield Label("Select submission language", classes="dialog-title")
 			yield LanguageSelect(
-				[(lang.name, lang.id) for lang in self._languages],
+				[(language.name, language.id) for language in self._languages],
 				prompt="Select a language (type to filter)",
-				value=self._selected_language_id,
+				value=self._selected_id,
 				allow_blank=True,
-				id="submit-lang",
+				id="language-select",
 			)
-			with VerticalScroll(id="submit-preview"):
-				yield Static("", id="submit-preview-body")
 			with Horizontal(classes="dialog-buttons"):
-				yield Button("Cancel", id="submit-cancel")
-				yield Button("Review and submit", variant="primary", id="submit-ok")
+				yield Button("Select", variant="primary", id="language-ok")
 
 	def on_mount(self) -> None:
-		self.query_one("#submit-path", Input).focus()
-		self._refresh_preview()
-
-	def on_input_changed(self, event: Input.Changed) -> None:
-		if event.input.id == "submit-path":
-			self._refresh_preview()
-
-	def on_input_submitted(self, event: Input.Submitted) -> None:
-		self._submit()
-
-	def _refresh_preview(self) -> None:
-		body = self.query_one("#submit-preview-body", Static)
-		raw = self.query_one("#submit-path", Input).value.strip()
-		path = Path(raw) if raw else None
-		if path is None or not path.exists():
-			body.update("[dim]File not found[/dim]")
-			return
-		try:
-			text = path.read_text(encoding="utf-8")
-		except OSError as exc:
-			body.update(f"[red]Read error: {exc}[/red]")
-			return
-		preview = "\n".join(text.splitlines()[:12])
-		body.update(f"[dim]{len(text)} bytes[/dim]\n{preview}")
+		self.query_one("#language-select", LanguageSelect).focus()
 
 	def on_button_pressed(self, event: Button.Pressed) -> None:
-		if event.button.id == "submit-ok":
+		if event.button.id == "language-ok":
 			self._submit()
 		else:
 			self.dismiss(None)
 
+	def on_input_submitted(self, event: Input.Submitted) -> None:
+		self._submit()
+
 	def _submit(self) -> None:
-		raw = self.query_one("#submit-path", Input).value.strip()
-		lang_value = self.query_one("#submit-lang", LanguageSelect).value
-		if not raw:
-			self.notify("Enter a file path.", severity="warning")
-			return
-		if lang_value is Select.NULL or lang_value is None:
+		value = self.query_one("#language-select", LanguageSelect).value
+		if value is Select.NULL or value is None:
 			self.notify("Select a language.", severity="warning")
 			return
-		lang_id = str(lang_value)
-		lang_name = next(
-			(lang.name for lang in self._languages if lang.id == lang_id), lang_id
+		selected_id = str(value)
+		selected = next(
+			(language for language in self._languages if language.id == selected_id),
+			None,
 		)
-		self.dismiss((Path(raw), lang_id, lang_name))
+		if selected is not None:
+			self.dismiss(selected)
 
 	def action_cancel(self) -> None:
 		self.dismiss(None)

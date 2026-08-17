@@ -4,32 +4,39 @@ from __future__ import annotations
 
 import asyncio
 import webbrowser
-from pathlib import Path
 
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Header, ListView
+from textual.widgets import Footer, Header, Label, ListView
 
 from ..client import AtCoderClient, AtCoderError
 from ..config import (
 	load_last_contest,
+	load_last_problem,
 	load_problem_markdown_cache,
+	load_submission_language,
 	save_last_contest,
+	save_last_problem,
 	save_problem_markdown_cache,
+	save_submission_language,
 )
 from ..markdown import html_to_markdown
+from ..languages import (
+	DEFAULT_SUBMISSION_LANGUAGES,
+	find_matching_language,
+)
 from ..models import Contest, Problem, ProblemSummary
+from ..source import SourcePathError, resolve_source_path
 from ..tester import TesterError, parse_time_limit, run_samples
 from .modals import (
 	REFRESH_CONTESTS,
 	ConfirmScreen,
 	ContestSearchScreen,
 	CookieLoginScreen,
-	FilePromptScreen,
-	SubmitScreen,
+	LanguageSelectScreen,
 )
 from .widgets import ProblemItem, ProblemList, ResultsPanel, StatementPanel
 
@@ -46,6 +53,7 @@ Key bindings:
 - `s` : Submit the selected problem (with confirmation)
 - `S` : View your submissions / `r` : Open the problem in a browser
 - `L` : Log in
+- `w` : Change the submission language
 - `1` `2` `3` : Focus each panel
 - `h` `l` `Tab` : Move between panels / `j` `k` : Move within a panel
 - `PageUp` `PageDown` : Scroll the statement by 3 lines
@@ -60,6 +68,7 @@ class AtcoderApp(App[None]):
 
 	CSS_PATH = "styles.tcss"
 	TITLE = "atcoder-tui"
+	ENABLE_COMMAND_PALETTE = False
 
 	BINDINGS = [
 		Binding("slash", "pick_contest", "Contest"),
@@ -69,6 +78,7 @@ class AtcoderApp(App[None]):
 		Binding("S", "submissions", "Submissions"),
 		Binding("r", "open_browser", "Browser"),
 		Binding("L", "login", "Login"),
+		Binding("w", "select_language", "Language"),
 		Binding("question_mark", "help", "Help"),
 		Binding("q", "quit", "Quit"),
 		Binding("1", "focus_problems", "Problems", show=False),
@@ -102,6 +112,9 @@ class AtcoderApp(App[None]):
 		self.contests: list[Contest] | None = None
 		self.problems: list[ProblemSummary] = []
 		self.current_problem: Problem | None = None
+		self.submission_language = (
+			load_submission_language() or DEFAULT_SUBMISSION_LANGUAGES[0]
+		)
 
 	# -- レイアウト ----------------------------------------------------
 
@@ -113,10 +126,13 @@ class AtcoderApp(App[None]):
 					yield ProblemList(id="problem-list")
 				yield ResultsPanel(id="results-panel")
 			yield StatementPanel(id="statement-panel")
-		yield Footer()
+		with Horizontal(id="status-bar"):
+			yield Footer(show_command_palette=False)
+			yield Label(id="language-status")
 
 	def on_mount(self) -> None:
 		self._set_panel_titles()
+		self._update_language_status()
 		self.statement.show_message(_WELCOME)
 		self.refresh_login_status()
 		last_contest = load_last_contest()
@@ -137,6 +153,26 @@ class AtcoderApp(App[None]):
 	@property
 	def results(self) -> ResultsPanel:
 		return self.query_one("#results-panel", ResultsPanel)
+
+	def _update_language_status(self) -> None:
+		self.query_one("#language-status", Label).update(
+			f"Language: {self.submission_language.name}"
+		)
+
+	@work(exclusive=True, group="language")
+	async def action_select_language(self) -> None:
+		languages = list(DEFAULT_SUBMISSION_LANGUAGES)
+		if all(language.id != self.submission_language.id for language in languages):
+			languages.append(self.submission_language)
+		selected = await self.push_screen_wait(
+			LanguageSelectScreen(languages, self.submission_language)
+		)
+		if selected is None:
+			return
+		self.submission_language = selected
+		save_submission_language(selected)
+		self._update_language_status()
+		self.notify(f"Submission language set to {selected.name}.")
 
 	# -- フォーカス操作 ------------------------------------------------
 
@@ -252,6 +288,14 @@ class AtcoderApp(App[None]):
 		save_last_contest(contest_id)
 		self.query_one("#problems-panel").border_title = f"1 {contest_id}"
 		await self._populate_problems(problems)
+		last_problem = load_last_problem()
+		if last_problem and last_problem[0] == contest_id:
+			last_summary = next(
+				(summary for summary in problems if summary.task_id == last_problem[1]),
+				None,
+			)
+			if last_summary is not None:
+				self.load_problem(last_summary)
 		self.notify(f"Loaded {len(problems)} problems.")
 
 	async def _populate_problems(self, problems: list[ProblemSummary]) -> None:
@@ -300,6 +344,7 @@ class AtcoderApp(App[None]):
 			)
 		problem.markdown = markdown
 		self.current_problem = problem
+		save_last_problem(problem.contest_id, problem.task_id)
 		self.statement.show_problem(problem)
 
 	# -- ローカルテスト ------------------------------------------------
@@ -313,14 +358,12 @@ class AtcoderApp(App[None]):
 		if not problem.samples:
 			self.notify("This problem has no samples.", severity="warning")
 			return
-		default = f"{problem.task_id}.py"
-		raw = await self.push_screen_wait(
-			FilePromptScreen("Source file to test", default)
-		)
-		if not raw:
+		try:
+			path = resolve_source_path(problem, self.submission_language)
+		except SourcePathError as exc:
+			self.notify(str(exc), severity="error")
 			return
-		path = Path(raw)
-		if not path.exists():
+		if not path.is_file():
 			self.notify(f"File not found: {path}", severity="error")
 			return
 		self.notify("Running sample tests...")
@@ -371,6 +414,14 @@ class AtcoderApp(App[None]):
 		if problem is None:
 			self.notify("Select a problem first.", severity="warning")
 			return
+		try:
+			path = resolve_source_path(problem, self.submission_language)
+		except SourcePathError as exc:
+			self.notify(str(exc), severity="error")
+			return
+		if not path.is_file():
+			self.notify(f"File not found: {path}", severity="error")
+			return
 		if not await asyncio.to_thread(self.client.is_logged_in):
 			self.notify("You must be logged in to submit (press L).", severity="warning")
 			return
@@ -384,21 +435,23 @@ class AtcoderApp(App[None]):
 		if not languages:
 			self.notify("Could not load the submission language list.", severity="error")
 			return
-		choice = await self.push_screen_wait(
-			SubmitScreen(problem, languages, f"{problem.task_id}.py")
-		)
-		if not choice:
+		language = find_matching_language(self.submission_language, languages)
+		if language is None:
+			self.notify(
+				f"{self.submission_language.name} is not available for this contest.",
+				severity="error",
+			)
 			return
-		path, lang_id, lang_name = choice
-		if not path.exists():
-			self.notify(f"File not found: {path}", severity="error")
+		try:
+			source = path.read_text(encoding="utf-8")
+		except (OSError, UnicodeError) as exc:
+			self.notify(f"Could not read source file: {exc}", severity="error")
 			return
-		source = path.read_text(encoding="utf-8")
 		confirmed = await self.push_screen_wait(
 			ConfirmScreen(
 				f"Submit the following source?\n\n"
 				f"Problem: {problem.index} - {problem.title}\n"
-				f"Language: {lang_name}\n"
+				f"Language: {language.name}\n"
 				f"File: {path} ({len(source)} bytes)",
 				confirm_label="Submit",
 			)
@@ -408,7 +461,11 @@ class AtcoderApp(App[None]):
 		self.notify("Submitting...")
 		try:
 			submission = await asyncio.to_thread(
-				self.client.submit, problem.contest_id, problem.task_id, lang_id, source
+				self.client.submit,
+				problem.contest_id,
+				problem.task_id,
+				language.id,
+				source,
 			)
 		except AtCoderError as exc:
 			self.notify(str(exc), severity="error")

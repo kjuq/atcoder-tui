@@ -43,7 +43,14 @@ uv run atcoder-tui
 
 最後に読み込んだコンテストは設定に保存され、次回起動時に自動で問題一覧を読み込みます。
 
-提出やテストに使うソースファイルは、その都度パスを入力します。初期値として `{task_id}.py` (例 `abc086_a.py`) を提案します。
+提出やテストに使うソースファイルは、`ATCODER_TUI_REPO_BASE` に設定したリポジトリから自動で読み込みます。
+問題 `abc471/A` なら、次のパスを使用します。
+
+```text
+$ATCODER_TUI_REPO_BASE/abc471/a/main.py
+```
+
+言語はホーム画面で `w` を押して選択します。選択中の言語はステータスバーに表示され、設定は終了後も保持されます。
 
 ### ログインについて
 
@@ -67,6 +74,7 @@ AtCoder のログインフォームは Cloudflare Turnstile (CAPTCHA の一種) 
 | `S` | 自分の提出一覧を確認 |
 | `r` | 選択中の問題をブラウザで開く |
 | `L` | ログイン |
+| `w` | 提出言語を変更 |
 | `1` / `2` / `3` | 各パネル (問題一覧 / 結果 / 本文) へフォーカス |
 | `h` / `l` / `Tab` | パネル間を移動 (lazygit 風。検索欄はスキップ) |
 | `j` / `k` | パネル内を上下移動 (矢印キーと同じ) |
@@ -79,7 +87,7 @@ AtCoder のログインフォームは Cloudflare Turnstile (CAPTCHA の一種) 
 
 ## 設定/セッション
 
-ログインセッション (cookie) は [platformdirs](https://github.com/tox-dev/platformdirs) が示すユーザ設定ディレクトリ配下に保存されます (macOS なら `~/Library/Application Support/atcoder-tui/session.txt`)。パスワードは扱わず、ブラウザから取り込んだセッション Cookie (`REVEL_SESSION`) のみを保存します。
+ログインセッション (cookie) とコンテスト一覧は [platformdirs](https://github.com/tox-dev/platformdirs) が示すユーザ設定ディレクトリ配下に保存されます。問題文 Markdown は `$XDG_CACHE_HOME/atcoder-tui`、提出言語と最後に開いたコンテスト/問題は `$XDG_STATE_HOME/atcoder-tui` に保存されます。未設定時はそれぞれ XDG 標準の `~/.cache/atcoder-tui`、`~/.local/state/atcoder-tui` を使用します。
 
 ## 開発
 
