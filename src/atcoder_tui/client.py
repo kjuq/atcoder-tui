@@ -90,14 +90,14 @@ class AtCoderClient:
 		try:
 			return self._session.get(url, **kwargs)  # type: ignore[arg-type]
 		except requests.RequestException as exc:
-			raise AtCoderError(f"GET に失敗しました: {url} ({exc})") from exc
+			raise AtCoderError(f"GET request failed: {url} ({exc})") from exc
 
 	def _post(self, url: str, data: dict[str, str]) -> requests.Response:
 		self._throttle()
 		try:
 			return self._session.post(url, data=data)
 		except requests.RequestException as exc:
-			raise AtCoderError(f"POST に失敗しました: {url} ({exc})") from exc
+			raise AtCoderError(f"POST request failed: {url} ({exc})") from exc
 
 	def _save_cookies(self) -> None:
 		self._cookie_path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +123,7 @@ class AtCoderClient:
 			value = value[len(SESSION_COOKIE) + 1 :]
 		value = value.strip().strip('"')
 		if not value:
-			raise LoginError("セッション Cookie (REVEL_SESSION) を入力してください。")
+			raise LoginError("Enter the session cookie (REVEL_SESSION).")
 		cookie = requests.cookies.create_cookie(
 			name=SESSION_COOKIE, value=value, domain="atcoder.jp", path="/"
 		)
@@ -131,8 +131,8 @@ class AtCoderClient:
 		self._save_cookies()
 		if not self.is_logged_in():
 			raise LoginError(
-				"セッションが無効です。ブラウザでログインし直し、"
-				"REVEL_SESSION の値を確認してください。"
+				"The session is invalid. Log in again in the browser and "
+				"check the REVEL_SESSION value."
 			)
 
 	def logout(self) -> None:
@@ -237,7 +237,7 @@ class AtCoderClient:
 		url = f"{BASE_URL}/contests/{contest_id}/tasks"
 		resp = self._get(url)
 		if resp.status_code == 404:
-			raise AtCoderError(f"コンテストが見つかりません: {contest_id}")
+			raise AtCoderError(f"Contest not found: {contest_id}")
 		return parser.parse_task_list(resp.text, contest_id)
 
 	def get_problem(
@@ -246,7 +246,7 @@ class AtCoderClient:
 		url = f"{BASE_URL}/contests/{contest_id}/tasks/{task_id}"
 		resp = self._get(url)
 		if resp.status_code == 404:
-			raise AtCoderError(f"問題が見つかりません: {contest_id}/{task_id}")
+			raise AtCoderError(f"Problem not found: {contest_id}/{task_id}")
 		return parser.parse_problem(
 			resp.text, contest_id, task_id, url, prefer_lang=prefer_lang
 		)
@@ -256,12 +256,10 @@ class AtCoderClient:
 		url = f"{BASE_URL}/contests/{contest_id}/tasks/{task_id}"
 		resp = self._get(url, allow_redirects=False)
 		if resp.status_code != 200:
-			raise NotLoggedInError("提出言語の取得にはログインが必要です。")
+			raise NotLoggedInError("You must be logged in to load submission languages.")
 		languages = parser.parse_languages(resp.text)
 		if not languages:
-			raise SubmissionError(
-				"問題ページから提出言語を取得できませんでした。"
-			)
+			raise SubmissionError("Could not load submission languages from the problem page.")
 		return languages
 
 	def get_my_submissions(self, contest_id: str) -> list[Submission]:
@@ -269,7 +267,7 @@ class AtCoderClient:
 		url = f"{BASE_URL}/contests/{contest_id}/submissions/me"
 		resp = self._get(url, allow_redirects=False)
 		if resp.status_code != 200:
-			raise NotLoggedInError("提出一覧の取得にはログインが必要です。")
+			raise NotLoggedInError("You must be logged in to load submissions.")
 		return parser.parse_submissions(resp.text, contest_id)
 
 	# -- 提出 ----------------------------------------------------------
@@ -281,10 +279,10 @@ class AtCoderClient:
 		submit_url = f"{BASE_URL}/contests/{contest_id}/submit"
 		page = self._get(submit_url, allow_redirects=False)
 		if page.status_code != 200:
-			raise NotLoggedInError("提出にはログインが必要です。")
+			raise NotLoggedInError("You must be logged in to submit.")
 		token = parser.parse_csrf_token(page.text)
 		if token is None:
-			raise SubmissionError("提出フォームから csrf_token を取得できませんでした。")
+			raise SubmissionError("Could not get the CSRF token from the submission form.")
 		resp = self._post(
 			submit_url,
 			data={
@@ -298,7 +296,7 @@ class AtCoderClient:
 		# 提出成功時は submissions/me へリダイレクトされる。
 		if "/submit" in resp.url and "submissions" not in resp.url:
 			raise SubmissionError(
-				"提出に失敗しました。言語IDやログイン状態を確認してください。"
+				"Submission failed. Check the language ID and login status."
 			)
 		submissions = self.get_my_submissions(contest_id)
 		for sub in submissions:

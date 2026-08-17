@@ -1,4 +1,4 @@
-"""TUI のモーダル画面群 (ログイン/ファイル入力/提出/確認)。"""
+"""Modal screens used by the TUI."""
 
 from __future__ import annotations
 
@@ -34,24 +34,24 @@ class CookieLoginScreen(ModalScreen["str | None"]):
 
 	def compose(self) -> ComposeResult:
 		with Vertical(id="login-dialog"):
-			yield Label("ログイン (セッション Cookie)", classes="dialog-title")
+			yield Label("Log in (session cookie)", classes="dialog-title")
 			yield Static(
-				"AtCoder のログインは CAPTCHA (Cloudflare Turnstile) で保護されて"
-				"いるため、ブラウザでログインして Cookie を取り込みます。\n\n"
-				"1. 「ブラウザを開く」で AtCoder にログイン\n"
-				"2. 開発者ツール → Application/ストレージ → Cookies → "
+				"AtCoder login is protected by CAPTCHA (Cloudflare Turnstile), "
+				"so log in through a browser and import the cookie.\n\n"
+				"1. Log in to AtCoder with `Open browser`\n"
+				"2. Open Developer Tools → Application/Storage → Cookies → "
 				"https://atcoder.jp\n"
-				"3. REVEL_SESSION の値をコピーして下に貼り付け",
+				"3. Copy the REVEL_SESSION value and paste it below",
 			)
-			yield Button("ブラウザを開く", id="login-open", classes="dialog-field")
+			yield Button("Open browser", id="login-open", classes="dialog-field")
 			yield Input(
-				placeholder="REVEL_SESSION の値",
+				placeholder="REVEL_SESSION value",
 				id="login-cookie",
 				classes="dialog-field",
 			)
 			with Horizontal(classes="dialog-buttons"):
-				yield Button("キャンセル", id="login-cancel")
-				yield Button("ログイン", variant="primary", id="login-ok")
+				yield Button("Cancel", id="login-cancel")
+				yield Button("Log in", variant="primary", id="login-ok")
 
 	def on_mount(self) -> None:
 		self.query_one("#login-cookie", Input).focus()
@@ -59,7 +59,7 @@ class CookieLoginScreen(ModalScreen["str | None"]):
 	def on_button_pressed(self, event: Button.Pressed) -> None:
 		if event.button.id == "login-open":
 			webbrowser.open(_LOGIN_URL)
-			self.notify("ブラウザで AtCoder にログインしてください")
+			self.notify("Log in to AtCoder in the browser.")
 		elif event.button.id == "login-ok":
 			self._submit()
 		else:
@@ -71,7 +71,7 @@ class CookieLoginScreen(ModalScreen["str | None"]):
 	def _submit(self) -> None:
 		value = self.query_one("#login-cookie", Input).value.strip()
 		if not value:
-			self.notify("REVEL_SESSION の値を入力してください", severity="warning")
+			self.notify("Enter the REVEL_SESSION value.", severity="warning")
 			return
 		self.dismiss(value)
 
@@ -80,7 +80,7 @@ class CookieLoginScreen(ModalScreen["str | None"]):
 
 
 class FilePromptScreen(ModalScreen[str | None]):
-	"""1 行のテキスト (ファイルパス) を入力する画面。"""
+	"""Screen for entering a one-line text value, such as a file path."""
 
 	BINDINGS = [("escape", "cancel", "Cancel")]
 
@@ -94,7 +94,7 @@ class FilePromptScreen(ModalScreen[str | None]):
 			yield Label(self._title, classes="dialog-title")
 			yield Input(value=self._default, id="prompt-input", classes="dialog-field")
 			with Horizontal(classes="dialog-buttons"):
-				yield Button("キャンセル", id="prompt-cancel")
+				yield Button("Cancel", id="prompt-cancel")
 				yield Button("OK", variant="primary", id="prompt-ok")
 
 	def on_mount(self) -> None:
@@ -123,10 +123,10 @@ class FilePromptScreen(ModalScreen[str | None]):
 
 
 class ContestSearchScreen(ModalScreen["str | None"]):
-	"""過去コンテストを絞り込み検索して選ぶ画面。
+	"""Screen for filtering and selecting an archived contest.
 
-	入力欄に "abc100" のような文字列を打つと、コンテスト id とタイトルに対して
-	部分一致でフィルタする。Enter または一覧での選択で id を返す。
+	Type text such as "abc100" to filter contest IDs and titles by substring.
+	Press Enter or select an item to return its ID.
 	"""
 
 	BINDINGS = [
@@ -143,9 +143,9 @@ class ContestSearchScreen(ModalScreen["str | None"]):
 
 	def compose(self) -> ComposeResult:
 		with Vertical(id="contest-dialog"):
-			yield Label("コンテストを選択", classes="dialog-title")
+			yield Label("Select a contest", classes="dialog-title")
 			yield Input(
-				placeholder="abc100 などで検索 (id / タイトル)",
+				placeholder="Search by ID or title, e.g. abc100",
 				id="contest-filter",
 				# "/" で戻ったときに入力済みの文字列を選択状態にしない
 				# (選択されていると次の入力で全置換されてしまうため)。
@@ -154,7 +154,7 @@ class ContestSearchScreen(ModalScreen["str | None"]):
 			yield ListView(id="contest-list")
 			yield Static("", id="contest-count")
 			yield Static(
-				"↓: 一覧へ  /: 検索へ  Enter: 選択  Ctrl+R: 一覧を再取得  Esc: 閉じる",
+				"Down: list  /: search  Enter: select  Ctrl+R: refresh  Esc: close",
 				id="contest-hint",
 			)
 
@@ -186,8 +186,8 @@ class ContestSearchScreen(ModalScreen["str | None"]):
 			await listview.extend(ContestItem(contest) for contest in hits)
 			listview.index = 0
 		count = self.query_one("#contest-count", Static)
-		more = " (絞り込んでください)" if total > len(hits) else ""
-		count.update(f"{len(hits)} / {total} 件{more}")
+		more = " (type to filter)" if total > len(hits) else ""
+		count.update(f"{len(hits)} / {total} results{more}")
 
 	async def on_input_changed(self, event: Input.Changed) -> None:
 		if event.input.id == "contest-filter":
@@ -222,7 +222,7 @@ class ContestSearchScreen(ModalScreen["str | None"]):
 		if isinstance(item, ContestItem):
 			self.dismiss(item.contest.id)
 		else:
-			self.notify("該当するコンテストがありません", severity="warning")
+			self.notify("No matching contests.", severity="warning")
 
 	def action_refresh(self) -> None:
 		self.dismiss(REFRESH_CONTESTS)
@@ -232,21 +232,21 @@ class ContestSearchScreen(ModalScreen["str | None"]):
 
 
 class ConfirmScreen(ModalScreen[bool]):
-	"""はい/いいえの確認ダイアログ。提出前の最終確認に使う。"""
+	"""Yes/no confirmation dialog used before submission."""
 
 	BINDINGS = [("escape", "cancel", "Cancel")]
 
-	def __init__(self, message: str, *, confirm_label: str = "実行") -> None:
+	def __init__(self, message: str, *, confirm_label: str = "Run") -> None:
 		super().__init__()
 		self._message = message
 		self._confirm_label = confirm_label
 
 	def compose(self) -> ComposeResult:
 		with Vertical(id="confirm-dialog"):
-			yield Label("確認", classes="dialog-title")
+			yield Label("Confirm", classes="dialog-title")
 			yield Static(self._message)
 			with Horizontal(classes="dialog-buttons"):
-				yield Button("キャンセル", id="confirm-cancel")
+				yield Button("Cancel", id="confirm-cancel")
 				yield Button(self._confirm_label, variant="error", id="confirm-ok")
 
 	def on_mount(self) -> None:
@@ -260,7 +260,7 @@ class ConfirmScreen(ModalScreen[bool]):
 
 
 class LanguageSearchChanged(Message):
-	"""言語プルダウン内の検索文字列が変わったことを通知する。"""
+	"""Message posted when the language filter changes."""
 
 	def __init__(self, query: str) -> None:
 		super().__init__()
@@ -268,7 +268,7 @@ class LanguageSearchChanged(Message):
 
 
 class LanguageSelectOverlay(SelectOverlay):
-	"""文字入力で候補を絞り込める言語選択用のオーバーレイ。"""
+	"""Language-selection overlay with type-to-filter support."""
 
 	def __init__(self) -> None:
 		super().__init__(type_to_search=False)
@@ -295,7 +295,7 @@ class LanguageSelectOverlay(SelectOverlay):
 
 
 class LanguageSelect(Select[str]):
-	"""選択中の文字入力で言語候補を部分一致検索する Select。"""
+	"""Select widget that filters language options while typing."""
 
 	def __init__(self, options: list[tuple[str, str]], **kwargs: object) -> None:
 		self._all_options = options
@@ -336,7 +336,7 @@ class LanguageSelect(Select[str]):
 			# compose 前は SelectCurrent がまだ存在しない。
 			return
 		if self._filter_query:
-			current.update(f"検索: {self._filter_query}")
+			current.update(f"Filter: {self._filter_query}")
 			return
 		if self.value == self.NULL:
 			current.update(self.NULL)
@@ -347,7 +347,7 @@ class LanguageSelect(Select[str]):
 				return
 
 	def _update_selection(self, event: SelectOverlay.UpdateSelection) -> None:
-		"""選択確定時は検索表示を選択した言語名へ戻す。"""
+		"""Restore the selected language name after selection."""
 		super()._update_selection(event)
 		self._filter_query = ""
 		self._update_search_display()
@@ -359,9 +359,9 @@ class LanguageSelect(Select[str]):
 
 
 class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
-	"""提出するソースファイルと言語を選ぶ画面。
+	"""Screen for selecting a source file and submission language.
 
-	dismiss する値は (ファイルパス, 言語ID, 言語名) のタプル。
+	 dismiss returns a tuple of (file path, language ID, language name).
 	"""
 
 	BINDINGS = [("escape", "cancel", "Cancel")]
@@ -384,17 +384,17 @@ class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
 	def compose(self) -> ComposeResult:
 		with Vertical(id="submit-dialog"):
 			yield Label(
-				f"提出: {self._problem.index} - {self._problem.title}",
+				f"Submit: {self._problem.index} - {self._problem.title}",
 				classes="dialog-title",
 			)
-			yield Label("ソースファイル", classes="dialog-field")
+			yield Label("Source file", classes="dialog-field")
 			yield Input(
 				value=self._default_path, id="submit-path", classes="dialog-field"
 			)
-			yield Label("言語", classes="dialog-field")
+			yield Label("Language", classes="dialog-field")
 			yield LanguageSelect(
 				[(lang.name, lang.id) for lang in self._languages],
-				prompt="言語を選択 (入力で絞り込み)",
+				prompt="Select a language (type to filter)",
 				value=self._selected_language_id,
 				allow_blank=True,
 				id="submit-lang",
@@ -402,8 +402,8 @@ class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
 			with VerticalScroll(id="submit-preview"):
 				yield Static("", id="submit-preview-body")
 			with Horizontal(classes="dialog-buttons"):
-				yield Button("キャンセル", id="submit-cancel")
-				yield Button("内容を確認して提出", variant="primary", id="submit-ok")
+				yield Button("Cancel", id="submit-cancel")
+				yield Button("Review and submit", variant="primary", id="submit-ok")
 
 	def on_mount(self) -> None:
 		self.query_one("#submit-path", Input).focus()
@@ -421,12 +421,12 @@ class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
 		raw = self.query_one("#submit-path", Input).value.strip()
 		path = Path(raw) if raw else None
 		if path is None or not path.exists():
-			body.update("[dim]ファイルが見つかりません[/dim]")
+			body.update("[dim]File not found[/dim]")
 			return
 		try:
 			text = path.read_text(encoding="utf-8")
 		except OSError as exc:
-			body.update(f"[red]読み込みエラー: {exc}[/red]")
+			body.update(f"[red]Read error: {exc}[/red]")
 			return
 		preview = "\n".join(text.splitlines()[:12])
 		body.update(f"[dim]{len(text)} bytes[/dim]\n{preview}")
@@ -441,10 +441,10 @@ class SubmitScreen(ModalScreen["tuple[Path, str, str] | None"]):
 		raw = self.query_one("#submit-path", Input).value.strip()
 		lang_value = self.query_one("#submit-lang", LanguageSelect).value
 		if not raw:
-			self.notify("ファイルパスを入力してください", severity="warning")
+			self.notify("Enter a file path.", severity="warning")
 			return
 		if lang_value is Select.NULL or lang_value is None:
-			self.notify("言語を選択してください", severity="warning")
+			self.notify("Select a language.", severity="warning")
 			return
 		lang_id = str(lang_value)
 		lang_name = next(

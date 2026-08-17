@@ -65,7 +65,7 @@ def detect_runner(source_path: Path) -> RunnerConfig:
 	suffix = source_path.suffix.lower()
 	runner = _RUNNERS.get(suffix)
 	if runner is None:
-		raise TesterError(f"未対応の拡張子です: {suffix or '(なし)'}")
+		raise TesterError(f"Unsupported file extension: {suffix or '(none)'}")
 	return runner
 
 
@@ -103,7 +103,7 @@ def run_samples(
 	"""
 	source_path = Path(source_path)
 	if not source_path.exists():
-		raise TesterError(f"ソースファイルが見つかりません: {source_path}")
+		raise TesterError(f"Source file not found: {source_path}")
 	runner = runner or detect_runner(source_path)
 
 	with tempfile.TemporaryDirectory(prefix="atcoder-tui-") as tmp:
@@ -120,7 +120,7 @@ def run_samples(
 					timeout=_BUILD_TIMEOUT,
 				)
 			except FileNotFoundError as exc:
-				raise TesterError(f"コンパイラが見つかりません: {build_cmd[0]}") from exc
+				raise TesterError(f"Compiler not found: {build_cmd[0]}") from exc
 			except subprocess.TimeoutExpired:
 				return [
 					TestResult(
@@ -129,7 +129,7 @@ def run_samples(
 						input="",
 						expected="",
 						actual="",
-						stderr="コンパイルがタイムアウトしました。",
+						stderr="Compilation timed out.",
 					)
 				]
 			if proc.returncode != 0:
@@ -166,7 +166,7 @@ def _run_one(
 			timeout=time_limit,
 		)
 	except FileNotFoundError as exc:
-		raise TesterError(f"実行コマンドが見つかりません: {run_cmd[0]}") from exc
+		raise TesterError(f"Command not found: {run_cmd[0]}") from exc
 	except subprocess.TimeoutExpired:
 		return TestResult(
 			index=sample.index,

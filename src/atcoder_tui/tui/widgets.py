@@ -1,4 +1,4 @@
-"""TUI を構成するカスタムウィジェット群。"""
+"""Custom widgets used to compose the TUI."""
 
 from __future__ import annotations
 
@@ -58,13 +58,13 @@ class ResultsPanel(DataTable):
 	def on_mount(self) -> None:
 		self.cursor_type = "row"
 		self.zebra_stripes = True
-		self.add_columns("#", "結果", "時間")
+		self.add_columns("#", "Result", "Time")
 
 	def show_samples(self, samples: list[Sample]) -> None:
 		"""テスト前のサンプル一覧 (結果は未実行)。"""
 		self.clear()
 		for sample in samples:
-			self.add_row(str(sample.index), Text("未実行", style="dim"), "")
+			self.add_row(str(sample.index), Text("Not run", style="dim"), "")
 
 	def show_results(self, results: list[TestResult]) -> None:
 		"""ローカルテストの結果を反映する。"""
@@ -99,6 +99,6 @@ class StatementPanel(VerticalScroll):
 			f"{limits}\n\n"
 			f"{problem.url}\n\n---\n\n"
 		)
-		body = problem.markdown or "(本文を変換できませんでした)"
+		body = problem.markdown or "(Could not convert the statement.)"
 		self.query_one("#statement-md", Markdown).update(header + body)
 		self.scroll_home(animate=False)

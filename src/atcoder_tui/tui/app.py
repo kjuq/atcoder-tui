@@ -1,4 +1,4 @@
-"""lazygit 風の AtCoder TUI アプリ本体。"""
+"""The main AtCoder TUI application."""
 
 from __future__ import annotations
 
@@ -31,27 +31,27 @@ from .widgets import ProblemItem, ProblemList, ResultsPanel, StatementPanel
 _WELCOME = """\
 # atcoder-tui
 
-AtCoder の問題を閲覧・テスト・提出できる TUI です。
+Browse, test, and submit AtCoder problems from this TUI.
 
-操作方法:
+Key bindings:
 
-- `/` : コンテストを検索して選ぶ (例 abc100 で絞り込み)
-- `Enter` : 問題一覧から問題を開く
-- `t` : 選択中の問題をローカルのサンプルでテスト
-- `s` : 選択中の問題にソースを提出 (確認あり)
-- `S` : 自分の提出一覧を確認 / `r` : 問題をbrowserで開く
-- `L` : ログイン
-- `1` `2` `3` : 各パネルへフォーカス移動
-- `h` `l` `Tab` : パネル間を移動 / `j` `k` : パネル内を上下移動
-- `PageUp` `PageDown` : 問題文を 3 行ずつ上下移動
-- `?` : このヘルプ / `q` : 終了
+- `/` : Search and select a contest (type `abc100` to filter)
+- `Enter` : Open a problem from the problem list
+- `t` : Test the selected problem with local samples
+- `s` : Submit the selected problem (with confirmation)
+- `S` : View your submissions / `r` : Open the problem in a browser
+- `L` : Log in
+- `1` `2` `3` : Focus each panel
+- `h` `l` `Tab` : Move between panels / `j` `k` : Move within a panel
+- `PageUp` `PageDown` : Scroll the statement by 3 lines
+- `?` : Show this help / `q` : Quit
 
-まずは `/` を押してコンテストを検索してください。
+Press `/` to search for a contest.
 """
 
 
 class AtcoderApp(App[None]):
-	"""AtCoder 問題ブラウザ TUI。"""
+	"""A TUI for browsing AtCoder problems."""
 
 	CSS_PATH = "styles.tcss"
 	TITLE = "atcoder-tui"
@@ -145,12 +145,12 @@ class AtcoderApp(App[None]):
 		self.statement.focus()
 
 	def action_scroll_statement_up(self) -> None:
-		"""フォーカス位置にかかわらず問題文を 3 行上へスクロールする。"""
+		"""Scroll the statement three lines up regardless of focus."""
 		if not isinstance(self.screen, ModalScreen):
 			self.statement.scroll_to(y=self.statement.scroll_target_y - 3, animate=False)
 
 	def action_scroll_statement_down(self) -> None:
-		"""フォーカス位置にかかわらず問題文を 3 行下へスクロールする。"""
+		"""Scroll the statement three lines down regardless of focus."""
 		if not isinstance(self.screen, ModalScreen):
 			self.statement.scroll_to(y=self.statement.scroll_target_y + 3, animate=False)
 
@@ -191,16 +191,16 @@ class AtcoderApp(App[None]):
 	# -- コンテスト/問題の読み込み ------------------------------------
 
 	async def _ensure_contests(self, *, force: bool = False) -> list[Contest] | None:
-		"""コンテスト一覧を (必要なら取得して) 返す。失敗時は None。"""
+		"""Return the contest list, fetching it when necessary."""
 		if self.contests is not None and not force:
 			return self.contests
 
 		def report(page: int, total: int) -> None:
 			self.call_from_thread(
-				self.notify, f"コンテスト一覧を取得中... {page}/{total}"
+				self.notify, f"Loading contest list... {page}/{total}"
 			)
 
-		self.notify("コンテスト一覧を取得中... (初回は数十秒かかります)")
+		self.notify("Loading contest list... (the first load may take several seconds)")
 		try:
 			contests = await asyncio.to_thread(
 				self.client.get_contests, force_refresh=force, progress=report
@@ -233,21 +233,21 @@ class AtcoderApp(App[None]):
 
 	@work(exclusive=True, group="contest")
 	async def load_contest(self, contest_id: str) -> None:
-		self.notify(f"コンテスト {contest_id} を読み込み中...")
+		self.notify(f"Loading contest {contest_id}...")
 		try:
 			problems = await asyncio.to_thread(self.client.get_task_list, contest_id)
 		except AtCoderError as exc:
 			self.notify(str(exc), severity="error")
 			return
 		if not problems:
-			self.notify("問題が見つかりませんでした", severity="warning")
+			self.notify("No problems found.", severity="warning")
 			return
 		self.contest_id = contest_id
 		self.problems = problems
 		save_last_contest(contest_id)
 		self.query_one("#problems-panel").border_title = f"1 {contest_id}"
 		await self._populate_problems(problems)
-		self.notify(f"{len(problems)} 問を取得しました")
+		self.notify(f"Loaded {len(problems)} problems.")
 
 	async def _populate_problems(self, problems: list[ProblemSummary]) -> None:
 		listview = self.query_one("#problem-list", ListView)
@@ -260,7 +260,7 @@ class AtcoderApp(App[None]):
 
 	@work(exclusive=True, group="problem")
 	async def load_problem(self, summary: ProblemSummary) -> None:
-		self.statement.show_message(f"# {summary.index} - {summary.title}\n\n読み込み中...")
+		self.statement.show_message(f"# {summary.index} - {summary.title}\n\nLoading...")
 		try:
 			problem = await asyncio.to_thread(
 				self.client.get_problem, summary.contest_id, summary.task_id
@@ -270,7 +270,7 @@ class AtcoderApp(App[None]):
 			return
 		self.results.show_samples(problem.samples)
 		self.statement.show_message(
-			f"# {problem.index} - {problem.title}\n\nMarkdown に変換中 (defuddle)..."
+			f"# {problem.index} - {problem.title}\n\nConverting to Markdown (defuddle)..."
 		)
 		markdown = await asyncio.to_thread(
 			html_to_markdown,
@@ -287,22 +287,22 @@ class AtcoderApp(App[None]):
 	async def action_run_tests(self) -> None:
 		problem = self.current_problem
 		if problem is None:
-			self.notify("先に問題を選択してください", severity="warning")
+			self.notify("Select a problem first.", severity="warning")
 			return
 		if not problem.samples:
-			self.notify("この問題にはサンプルがありません", severity="warning")
+			self.notify("This problem has no samples.", severity="warning")
 			return
 		default = f"{problem.task_id}.py"
 		raw = await self.push_screen_wait(
-			FilePromptScreen("テストするソースファイル", default)
+			FilePromptScreen("Source file to test", default)
 		)
 		if not raw:
 			return
 		path = Path(raw)
 		if not path.exists():
-			self.notify(f"ファイルが見つかりません: {path}", severity="error")
+			self.notify(f"File not found: {path}", severity="error")
 			return
-		self.notify("サンプルテストを実行中...")
+		self.notify("Running sample tests...")
 		time_limit = parse_time_limit(problem.time_limit)
 		try:
 			results = await asyncio.to_thread(
@@ -313,7 +313,7 @@ class AtcoderApp(App[None]):
 			return
 		self.results.show_results(results)
 		ac = sum(1 for r in results if r.status.value == "AC")
-		self.notify(f"テスト完了: {ac}/{len(results)} AC")
+		self.notify(f"Testing complete: {ac}/{len(results)} AC")
 
 	# -- ログイン ------------------------------------------------------
 
@@ -326,21 +326,21 @@ class AtcoderApp(App[None]):
 			logged_in = await asyncio.to_thread(self.client.is_logged_in)
 		except AtCoderError:
 			logged_in = False
-		self.sub_title = "ログイン済み" if logged_in else "ゲスト"
+		self.sub_title = "Logged in" if logged_in else "Guest"
 
 	@work(exclusive=True, group="login")
 	async def action_login(self) -> None:
 		session_value = await self.push_screen_wait(CookieLoginScreen())
 		if not session_value:
 			return
-		self.notify("セッションを検証中...")
+		self.notify("Validating session...")
 		try:
 			await asyncio.to_thread(self.client.login_with_cookie, session_value)
 		except AtCoderError as exc:
 			self.notify(str(exc), severity="error")
 			return
-		self.sub_title = "ログイン済み"
-		self.notify("ログインしました", severity="information")
+		self.sub_title = "Logged in"
+		self.notify("Logged in.", severity="information")
 
 	# -- 提出 ----------------------------------------------------------
 
@@ -348,10 +348,10 @@ class AtcoderApp(App[None]):
 	async def action_submit(self) -> None:
 		problem = self.current_problem
 		if problem is None:
-			self.notify("先に問題を選択してください", severity="warning")
+			self.notify("Select a problem first.", severity="warning")
 			return
 		if not await asyncio.to_thread(self.client.is_logged_in):
-			self.notify("提出にはログインが必要です (l)", severity="warning")
+			self.notify("You must be logged in to submit (press L).", severity="warning")
 			return
 		try:
 			languages = await asyncio.to_thread(
@@ -361,7 +361,7 @@ class AtcoderApp(App[None]):
 			self.notify(str(exc), severity="error")
 			return
 		if not languages:
-			self.notify("提出言語の一覧を取得できませんでした", severity="error")
+			self.notify("Could not load the submission language list.", severity="error")
 			return
 		choice = await self.push_screen_wait(
 			SubmitScreen(problem, languages, f"{problem.task_id}.py")
@@ -370,21 +370,21 @@ class AtcoderApp(App[None]):
 			return
 		path, lang_id, lang_name = choice
 		if not path.exists():
-			self.notify(f"ファイルが見つかりません: {path}", severity="error")
+			self.notify(f"File not found: {path}", severity="error")
 			return
 		source = path.read_text(encoding="utf-8")
 		confirmed = await self.push_screen_wait(
 			ConfirmScreen(
-				f"以下の内容で提出します。よろしいですか?\n\n"
-				f"問題: {problem.index} - {problem.title}\n"
-				f"言語: {lang_name}\n"
-				f"ファイル: {path} ({len(source)} bytes)",
-				confirm_label="提出する",
+				f"Submit the following source?\n\n"
+				f"Problem: {problem.index} - {problem.title}\n"
+				f"Language: {lang_name}\n"
+				f"File: {path} ({len(source)} bytes)",
+				confirm_label="Submit",
 			)
 		)
 		if not confirmed:
 			return
-		self.notify("提出中...")
+		self.notify("Submitting...")
 		try:
 			submission = await asyncio.to_thread(
 				self.client.submit, problem.contest_id, problem.task_id, lang_id, source
@@ -392,9 +392,9 @@ class AtcoderApp(App[None]):
 		except AtCoderError as exc:
 			self.notify(str(exc), severity="error")
 			return
-		status = submission.status if submission else "送信完了"
+		status = submission.status if submission else "Submitted"
 		self.notify(
-			f"提出しました (状態: {status or '判定中'})。r で結果を更新できます。",
+			f"Submitted (status: {status or 'Judging'}). Press r to refresh.",
 			severity="information",
 			timeout=8,
 		)
@@ -404,15 +404,15 @@ class AtcoderApp(App[None]):
 		"""選択中の問題を既定のブラウザで開く。"""
 		problem = self.current_problem
 		if problem is None:
-			self.notify("先に問題を選択してください", severity="warning")
+			self.notify("Select a problem first.", severity="warning")
 			return
 		await asyncio.to_thread(webbrowser.open, problem.url)
-		self.notify(f"ブラウザで開きました: {problem.url}")
+		self.notify(f"Opened in browser: {problem.url}")
 
 	@work(exclusive=True, group="submissions")
 	async def action_submissions(self) -> None:
 		if self.contest_id is None:
-			self.notify("先にコンテストを読み込んでください", severity="warning")
+			self.notify("Load a contest first.", severity="warning")
 			return
 		try:
 			submissions = await asyncio.to_thread(
@@ -422,12 +422,12 @@ class AtcoderApp(App[None]):
 			self.notify(str(exc), severity="error")
 			return
 		if not submissions:
-			self.notify("提出はまだありません")
+			self.notify("No submissions yet.")
 			return
 		latest = submissions[0]
 		self.notify(
-			f"最新の提出: {latest.task_id} / {latest.language} / "
-			f"{latest.status or '判定中'}",
+			f"Latest submission: {latest.task_id} / {latest.language} / "
+			f"{latest.status or 'Judging'}",
 			timeout=8,
 		)
 
