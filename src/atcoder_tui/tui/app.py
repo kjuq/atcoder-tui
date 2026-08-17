@@ -42,6 +42,7 @@ AtCoder の問題を閲覧・テスト・提出できる TUI です。
 - `L` : ログイン
 - `1` `2` `3` : 各パネルへフォーカス移動
 - `h` `l` `Tab` : パネル間を移動 / `j` `k` : パネル内を上下移動
+- `PageUp` `PageDown` : 問題文を 3 行ずつ上下移動
 - `?` : このヘルプ / `q` : 終了
 
 まずは `/` を押してコンテストを検索してください。
@@ -67,6 +68,20 @@ class AtcoderApp(App[None]):
 		Binding("1", "focus_problems", "Problems", show=False),
 		Binding("2", "focus_results", "Results", show=False),
 		Binding("3", "focus_statement", "Statement", show=False),
+		Binding(
+			"pageup",
+			"scroll_statement_up",
+			"Statement page up",
+			show=False,
+			priority=True,
+		),
+		Binding(
+			"pagedown",
+			"scroll_statement_down",
+			"Statement page down",
+			show=False,
+			priority=True,
+		),
 		Binding("l", "next_panel", "Next panel", show=False),
 		Binding("h", "prev_panel", "Prev panel", show=False),
 	]
@@ -124,6 +139,16 @@ class AtcoderApp(App[None]):
 
 	def action_focus_statement(self) -> None:
 		self.statement.focus()
+
+	def action_scroll_statement_up(self) -> None:
+		"""フォーカス位置にかかわらず問題文を 3 行上へスクロールする。"""
+		if not isinstance(self.screen, ModalScreen):
+			self.statement.scroll_to(y=self.statement.scroll_target_y - 3, animate=False)
+
+	def action_scroll_statement_down(self) -> None:
+		"""フォーカス位置にかかわらず問題文を 3 行下へスクロールする。"""
+		if not isinstance(self.screen, ModalScreen):
+			self.statement.scroll_to(y=self.statement.scroll_target_y + 3, animate=False)
 
 	def _cycle_panel(self, delta: int) -> None:
 		panels = [self.query_one(sel) for sel in self._PANELS]
