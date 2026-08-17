@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from unittest.mock import patch
 
-from textual.widgets import ListView, Markdown
+from textual.widgets import ListView, Markdown, Static
 
 from atcoder_tui.models import Contest, Problem, ProblemSummary, Sample
 from atcoder_tui.tui.app import AtcoderApp
@@ -55,8 +56,10 @@ async def _wait_until(app: AtcoderApp, pilot, predicate, *, tries: int = 60) -> 
 	return predicate()
 
 
-def test_app_layout_and_flow() -> None:
+def test_app_layout_and_flow(tmp_path: Path) -> None:
 	async def scenario() -> None:
+		source_path = tmp_path / "main.py"
+		source_path.write_text("print(1)\n", encoding="utf-8")
 		app = AtcoderApp(client=FakeClient())
 		async with app.run_test() as pilot:
 			# 3 パネルが構築されている。
@@ -136,6 +139,31 @@ def test_app_layout_and_flow() -> None:
 			assert app.focused is statement
 			await pilot.press("tab")
 			assert app.focused is listview
+
+			# s opens the problem page after confirmation instead of submitting
+			# through an HTTP client. The selected language is shown in the dialog.
+			with (
+				patch(
+					"atcoder_tui.tui.app.resolve_source_path",
+					return_value=source_path,
+				),
+				patch(
+					"atcoder_tui.tui.app.copy_to_clipboard",
+					return_value="wl-copy",
+				) as mock_clipboard,
+				patch("webbrowser.open") as mock_open,
+			):
+				await pilot.press("s")
+				assert await _wait_until(
+					app,
+					pilot,
+					lambda: app.screen.__class__.__name__ == "ConfirmScreen",
+				)
+				assert "Python" in app.screen.query_one(Static).renderable
+				await pilot.press("enter")
+				assert await _wait_until(app, pilot, lambda: mock_open.called)
+				mock_clipboard.assert_called_once_with("print(1)\n")
+				mock_open.assert_called_once_with("https://x/a#submit")
 
 			# r で現在の問題をブラウザで開く。
 			with patch("webbrowser.open") as mock_open:

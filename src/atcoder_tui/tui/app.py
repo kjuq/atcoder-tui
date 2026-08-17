@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
+import subprocess
+import sys
 import webbrowser
 
 from textual import work
@@ -24,10 +27,7 @@ from ..config import (
 	save_submission_language,
 )
 from ..markdown import html_to_markdown
-from ..languages import (
-	DEFAULT_SUBMISSION_LANGUAGES,
-	find_matching_language,
-)
+from ..languages import DEFAULT_SUBMISSION_LANGUAGES
 from ..models import Contest, Problem, ProblemSummary
 from ..source import SourcePathError, resolve_source_path
 from ..tester import TesterError, parse_time_limit, run_samples
@@ -50,7 +50,7 @@ Key bindings:
 - `/` : Search and select a contest (type `abc100` to filter)
 - `Enter` : Open a problem from the problem list
 - `t` : Test the selected problem with local samples
-- `s` : Submit the selected problem (with confirmation)
+- `s` : Open the selected problem for submission (with confirmation)
 - `S` : View your submissions / `r` : Open the problem in a browser
 - `L` : Log in
 - `w` : Change the submission language
@@ -61,6 +61,35 @@ Key bindings:
 
 Press `/` to search for a contest.
 """
+
+
+def copy_to_clipboard(text: str) -> str | None:
+	"""Copy text using a locally available native clipboard command."""
+	if sys.platform == "darwin":
+		commands = (["pbcopy"],)
+	elif sys.platform.startswith("win"):
+		commands = (["clip.exe"],)
+	else:
+		commands = (
+			["wl-copy"],
+			["xsel", "--clipboard", "--input"],
+			["xclip", "-selection", "clipboard"],
+		)
+	for command in commands:
+		if shutil.which(command[0]) is None:
+			continue
+		try:
+			subprocess.run(
+				command,
+				input=text,
+				text=True,
+				check=True,
+				timeout=5,
+			)
+		except (OSError, subprocess.SubprocessError):
+			continue
+		return command[0]
+	return None
 
 
 class AtcoderApp(App[None]):
@@ -427,26 +456,6 @@ class AtcoderApp(App[None]):
 		if not path.is_file():
 			self.notify(f"File not found: {path}", severity="error")
 			return
-		if not await asyncio.to_thread(self.client.is_logged_in):
-			self.notify("You must be logged in to submit (press L).", severity="warning")
-			return
-		try:
-			languages = await asyncio.to_thread(
-				self.client.get_languages, problem.contest_id, problem.task_id
-			)
-		except AtCoderError as exc:
-			self.notify(str(exc), severity="error")
-			return
-		if not languages:
-			self.notify("Could not load the submission language list.", severity="error")
-			return
-		language = find_matching_language(self.submission_language, languages)
-		if language is None:
-			self.notify(
-				f"{self.submission_language.name} is not available for this contest.",
-				severity="error",
-			)
-			return
 		try:
 			source = path.read_text(encoding="utf-8")
 		except (OSError, UnicodeError) as exc:
@@ -454,30 +463,26 @@ class AtcoderApp(App[None]):
 			return
 		confirmed = await self.push_screen_wait(
 			ConfirmScreen(
-				f"Submit the following source?\n\n"
+				f"Open the problem page for submission?\n\n"
 				f"Problem: {problem.index} - {problem.title}\n"
-				f"Language: {language.name}\n"
+				f"Language: {self.submission_language.name}\n"
 				f"File: {path} ({len(source)} bytes)",
-				confirm_label="Submit",
+				confirm_label="Open in browser",
 			)
 		)
 		if not confirmed:
 			return
-		self.notify("Submitting...")
-		try:
-			submission = await asyncio.to_thread(
-				self.client.submit,
-				problem.contest_id,
-				problem.task_id,
-				language.id,
-				source,
-			)
-		except AtCoderError as exc:
-			self.notify(str(exc), severity="error")
-			return
-		status = submission.status if submission else "Submitted"
+		clipboard_command = await asyncio.to_thread(copy_to_clipboard, source)
+		browser_url = f"{problem.url}#submit"
+		await asyncio.to_thread(webbrowser.open, browser_url)
+		clipboard_status = (
+			f"Copied the source to the clipboard with {clipboard_command}. "
+			if clipboard_command
+			else "Could not copy the source to the clipboard. "
+		)
 		self.notify(
-			f"Submitted (status: {status or 'Judging'}). Press r to refresh.",
+			f"{clipboard_status}Opened {browser_url}. Select {self.submission_language.name} "
+			"and submit in the browser.",
 			severity="information",
 			timeout=8,
 		)
