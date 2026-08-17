@@ -78,7 +78,15 @@ AtCoder のログインフォームは Cloudflare Turnstile (CAPTCHA の一種) 
 3. ブラウザの開発者ツール → Application/ストレージ → Cookies → `https://atcoder.jp` を開き、`REVEL_SESSION` の値をコピー
 4. ログイン画面に貼り付けてログイン
 
-一度ログインすればセッションが保存され、提出 (`s`) や提出一覧 (`S`) はそのまま利用できます (これらは CAPTCHA の対象外です)。
+#### 提出と CAPTCHA
+
+AtCoder は、ログインだけでなくソースコード提出やカスタムテストにも Cloudflare Turnstile (CAPTCHA) を導入しています。CAPTCHA が要求されない状況では `oj` / `oj-api` によるターミナルからの提出が可能ですが、CAPTCHA が要求される提出を `oj` が自動的に通過させることはできません。特に終了済みコンテストでは、ターミナルからの提出が拒否される場合があります。
+
+`oj` の AtCoder 対応は、提出ページから CSRF トークンを取得し、問題 ID・言語 ID・ソースコードを通常の HTML フォームとして POST する実装です。CAPTCHA トークンを取得・送信する処理はありません。`oj login` も AtCoder の CAPTCHA の影響を受けるため、ブラウザでログインした後に `REVEL_SESSION` Cookie を `oj` の Cookie jar に取り込む方法が使われますが、これは提出時の CAPTCHA を解決するものではありません。
+
+今回の確認では、`oj` の問題ページ解析で `AssertionError: assert parsed_memory_limit` が発生するケースも確認しました。これは CAPTCHA とは別の、AtCoder の HTML 変更に対する `oj` の互換性問題です。
+
+このため、`s` はターミナルから提出を試みず、確認ダイアログで Enter を押すと AtCoder の問題ページをブラウザで開きます。CAPTCHA の完了と提出操作はブラウザで行ってください。
 
 ## キーバインド
 
