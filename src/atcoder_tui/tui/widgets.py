@@ -8,7 +8,14 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.widgets import DataTable, Label, ListItem, ListView, Markdown
 
-from ..models import Contest, Problem, ProblemSummary, Sample, TestResult, TestStatus
+from ..models import (
+	Contest,
+	Problem,
+	ProblemSummary,
+	Sample,
+	TestResult,
+	TestStatus,
+)
 
 # 判定ごとの表示色。
 _STATUS_COLOR: dict[TestStatus, str] = {
@@ -59,22 +66,33 @@ class ResultsPanel(DataTable):
 		self.cursor_type = "row"
 		self.zebra_stripes = True
 		self.add_columns("#", "Result", "Time")
+		self._test_items: list[Sample | TestResult] = []
 
 	def show_samples(self, samples: list[Sample]) -> None:
 		"""テスト前のサンプル一覧 (結果は未実行)。"""
+		self._test_items = list(samples)
 		self.clear()
 		for sample in samples:
-			self.add_row(str(sample.index), Text("Not run", style="dim"), "")
+			self.add_row(
+				str(sample.index), Text("Not run", style="dim"), "", key=str(sample.index)
+			)
 
 	def show_results(self, results: list[TestResult]) -> None:
 		"""ローカルテストの結果を反映する。"""
+		self._test_items = list(results)
 		self.clear()
 		for result in results:
 			color = _STATUS_COLOR.get(result.status, "white")
 			status = Text(result.status.value, style=f"bold {color}")
 			elapsed = f"{result.elapsed:.2f}s" if result.elapsed else ""
 			label = str(result.index) if result.index else "-"
-			self.add_row(label, status, elapsed)
+			self.add_row(label, status, elapsed, key=str(result.index))
+
+	def test_at(self, row: int) -> Sample | TestResult | None:
+		"""Return the test represented by a table row."""
+		if 0 <= row < len(self._test_items):
+			return self._test_items[row]
+		return None
 
 
 class StatementPanel(VerticalScroll):
@@ -102,3 +120,45 @@ class StatementPanel(VerticalScroll):
 		body = problem.markdown or "(Could not convert the statement.)"
 		self.query_one("#statement-md", Markdown).update(header + body)
 		self.scroll_home(animate=False)
+
+	def show_test_case(
+		self,
+		problem: Problem,
+		test: Sample | TestResult,
+	) -> None:
+		"""Replace the statement with the selected test's input and output."""
+		if isinstance(test, TestResult):
+			index = test.index
+			input_text = test.input
+			expected = test.expected
+			actual = test.actual
+			status = f"Result: {test.status.value}"
+			stderr = test.stderr
+		else:
+			index = test.index
+			input_text = test.input
+			expected = test.output
+			actual = "(Not run yet)"
+			status = "Result: Not run"
+			stderr = ""
+
+		content = (
+			f"# Test {index}\n\n"
+			f"{problem.index} - {problem.title}\n\n"
+			f"{status}\n\n"
+			f"## Input\n\n{_code_block(input_text)}\n\n"
+			f"## Expected output\n\n{_code_block(expected)}\n\n"
+			f"## Actual output\n\n{_code_block(actual)}"
+		)
+		if stderr:
+			content += f"\n\n## Standard error\n\n{_code_block(stderr)}"
+		self.query_one("#statement-md", Markdown).update(content)
+		self.scroll_home(animate=False)
+
+
+def _code_block(text: str) -> str:
+	"""Format arbitrary test output as a Markdown code block."""
+	fence = "```"
+	while fence in text:
+		fence += "`"
+	return f"{fence}text\n{text.rstrip()}\n{fence}"

@@ -92,6 +92,20 @@ ModalScreen {
 	background: $surface;
 }
 
+#event-log-dialog {
+	width: 90%;
+	height: 80%;
+	padding: 1 2;
+	border: thick $accent;
+	background: $surface;
+}
+
+#event-log-list {
+	height: 1fr;
+	border: round $primary-darken-2;
+	padding: 0 1;
+}
+
 #contest-filter {
 	margin-bottom: 1;
 }

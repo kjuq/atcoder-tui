@@ -30,7 +30,7 @@ def config_dir() -> Path:
 
 def session_path() -> Path:
 	"""ログインセッション (cookie jar) の保存先。"""
-	return config_dir() / "session.txt"
+	return state_dir() / "session.txt"
 
 
 def contests_cache_path() -> Path:

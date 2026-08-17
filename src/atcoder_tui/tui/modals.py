@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import webbrowser
+from collections.abc import Sequence
+from typing import Generic, TypeVar
 
 from textual import events
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.css.query import NoMatches
 from textual.message import Message
 from textual.screen import ModalScreen
@@ -21,8 +23,52 @@ _LOGIN_URL = "https://atcoder.jp/login"
 # コンテスト検索で「一覧を再取得する」ことを表す番兵値。
 REFRESH_CONTESTS = "\x00refresh\x00"
 
+ScreenResult = TypeVar("ScreenResult")
 
-class CookieLoginScreen(ModalScreen["str | None"]):
+
+class DismissOnOutsideClickModalScreen(ModalScreen[ScreenResult], Generic[ScreenResult]):
+	"""A modal that treats a click on its dimmed background like Escape."""
+
+	def on_click(self, event: events.Click) -> None:
+		# A click outside the dialog is received by the screen itself. Clicks on
+		# dialog children keep bubbling, but their originating widget is different.
+		if event.button == 1 and event.widget is self:
+			event.stop()
+			self.action_cancel()  # type: ignore[attr-defined]
+
+
+class EventLogScreen(DismissOnOutsideClickModalScreen[None]):
+	"""Display application events on demand."""
+
+	BINDINGS = [("escape", "cancel", "Close")]
+
+	def __init__(self, entries: Sequence[str]) -> None:
+		super().__init__()
+		self._entries = tuple(entries)
+
+	def compose(self) -> ComposeResult:
+		with Vertical(id="event-log-dialog"):
+			yield Label("Event log", classes="dialog-title")
+			with VerticalScroll(id="event-log-list"):
+				if self._entries:
+					for entry in self._entries:
+						yield Label(entry, markup=False)
+				else:
+					yield Label("No events recorded.")
+			with Horizontal(classes="dialog-buttons"):
+				yield Button("Close", id="event-log-close")
+
+	def on_mount(self) -> None:
+		self.query_one("#event-log-list", VerticalScroll).scroll_end(animate=False)
+
+	def on_button_pressed(self, event: Button.Pressed) -> None:
+		self.dismiss(None)
+
+	def action_cancel(self) -> None:
+		self.dismiss(None)
+
+
+class CookieLoginScreen(DismissOnOutsideClickModalScreen[str | None]):
 	"""セッション Cookie (REVEL_SESSION) を貼り付けてログインする画面。
 
 	AtCoder のログインは Cloudflare Turnstile で保護されているため、ユーザに
@@ -78,7 +124,7 @@ class CookieLoginScreen(ModalScreen["str | None"]):
 		self.dismiss(None)
 
 
-class ContestSearchScreen(ModalScreen["str | None"]):
+class ContestSearchScreen(DismissOnOutsideClickModalScreen[str | None]):
 	"""Screen for filtering and selecting an archived contest.
 
 	Type text such as "abc100" to filter contest IDs and titles by substring.
@@ -187,7 +233,7 @@ class ContestSearchScreen(ModalScreen["str | None"]):
 		self.dismiss(None)
 
 
-class ConfirmScreen(ModalScreen[bool]):
+class ConfirmScreen(DismissOnOutsideClickModalScreen[bool]):
 	"""Yes/no confirmation dialog used before submission."""
 
 	BINDINGS = [("escape", "cancel", "Cancel")]
@@ -313,7 +359,7 @@ class LanguageSelect(Select[str]):
 		self._apply_filter()
 
 
-class LanguageSelectScreen(ModalScreen[Language | None]):
+class LanguageSelectScreen(DismissOnOutsideClickModalScreen[Language | None]):
 	"""Screen for selecting the default submission language."""
 
 	BINDINGS = [("escape", "cancel", "Cancel")]

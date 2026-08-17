@@ -3,17 +3,24 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import shlex
 import shutil
 import subprocess
 import sys
 import webbrowser
+from datetime import datetime
 
-from textual import work
-from textual.app import App, ComposeResult
+from textual import constants, work
+from textual.app import App, ComposeResult, SuspendNotSupported
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Header, Label, ListView
+from textual.widgets import DataTable, Footer, Header, Label, ListView
+
+# Textual defaults to a 100 ms delay to distinguish Esc from an escape
+# sequence. atcoder-tui doesn't need that much delay for its TUI controls.
+constants.ESCAPE_DELAY = 0.01
 
 from ..client import AtCoderClient, AtCoderError
 from ..config import (
@@ -36,6 +43,7 @@ from .modals import (
 	ConfirmScreen,
 	ContestSearchScreen,
 	CookieLoginScreen,
+	EventLogScreen,
 	LanguageSelectScreen,
 )
 from .widgets import ProblemItem, ProblemList, ResultsPanel, StatementPanel
@@ -50,10 +58,12 @@ Key bindings:
 - `/` : Search and select a contest (type `abc100` to filter)
 - `Enter` : Open a problem from the problem list
 - `t` : Test the selected problem with local samples
+- `e` : Edit the selected problem's source with `$EDITOR`
 - `s` : Open the selected problem for submission (with confirmation)
 - `S` : View your submissions / `r` : Open the problem in a browser
 - `L` : Log in
 - `w` : Change the submission language
+- `E` : Show the event log
 - `1` `2` `3` : Focus each panel
 - `h` `l` `Tab` : Move between panels / `j` `k` : Move within a panel
 - `PageUp` `PageDown` : Scroll the statement by 3 lines
@@ -103,11 +113,13 @@ class AtcoderApp(App[None]):
 		Binding("slash", "pick_contest", "Contest"),
 		Binding("c", "pick_contest", "Contest", show=False),
 		Binding("t", "run_tests", "Test"),
+		Binding("e", "edit_source", "Edit"),
 		Binding("s", "submit", "Submit"),
 		Binding("S", "submissions", "Submissions"),
 		Binding("r", "open_browser", "Browser"),
 		Binding("L", "login", "Login"),
 		Binding("w", "select_language", "Language"),
+		Binding("E", "show_event_log", "Event log"),
 		Binding("question_mark", "help", "Help"),
 		Binding("q", "quit", "Quit"),
 		Binding("1", "focus_problems", "Problems", show=False),
@@ -141,6 +153,7 @@ class AtcoderApp(App[None]):
 		self.contests: list[Contest] | None = None
 		self.problems: list[ProblemSummary] = []
 		self.current_problem: Problem | None = None
+		self._event_log: list[str] = []
 		self.submission_language = (
 			load_submission_language()
 			or next(
@@ -151,6 +164,30 @@ class AtcoderApp(App[None]):
 		)
 
 	# -- レイアウト ----------------------------------------------------
+
+	def notify(
+		self,
+		message: str,
+		*,
+		title: str = "",
+		severity: str = "information",
+		timeout: float | None = None,
+		markup: bool = True,
+	) -> None:
+		"""Record an event without displaying a transient notification."""
+		severity_value = getattr(severity, "value", severity)
+		prefix = f"{title}: " if title else ""
+		entry = (
+			f"[{datetime.now().strftime('%H:%M:%S')}] "
+			f"{str(severity_value).upper()}: {prefix}{message}"
+		)
+		self._event_log.append(entry)
+		# Keep a long-running session from growing without bound.
+		if len(self._event_log) > 500:
+			del self._event_log[:-500]
+
+	def action_show_event_log(self) -> None:
+		self.push_screen(EventLogScreen(self._event_log))
 
 	def compose(self) -> ComposeResult:
 		yield Header()
@@ -207,6 +244,48 @@ class AtcoderApp(App[None]):
 		save_submission_language(selected)
 		self._update_language_status()
 		self.notify(f"Submission language set to {selected.name}.")
+
+	@work(exclusive=True, group="edit")
+	async def action_edit_source(self) -> None:
+		"""Open the selected problem's source in the user's terminal editor."""
+		problem = self.current_problem
+		if problem is None:
+			self.notify("Select a problem first.", severity="warning")
+			return
+		try:
+			path = resolve_source_path(problem, self.submission_language)
+		except SourcePathError as exc:
+			self.notify(str(exc), severity="error")
+			return
+
+		editor = os.environ.get("EDITOR", "").strip()
+		if not editor:
+			self.notify("Set $EDITOR to edit source files.", severity="warning")
+			return
+		try:
+			command = shlex.split(editor)
+		except ValueError as exc:
+			self.notify(f"Invalid $EDITOR value: {exc}", severity="error")
+			return
+		if not command:
+			self.notify("Set $EDITOR to edit source files.", severity="warning")
+			return
+		command.append(str(path))
+
+		try:
+			with self.suspend():
+				completed = await asyncio.to_thread(
+					subprocess.run, command, check=False
+				)
+		except (OSError, SuspendNotSupported) as exc:
+			# SuspendNotSupported is an environment-specific exception, while
+			# OSError covers a missing editor executable. Keep both as a log event.
+			self.notify(f"Could not open editor: {exc}", severity="error")
+			return
+		if completed.returncode != 0:
+			self.notify(
+				f"Editor exited with status {completed.returncode}.", severity="error"
+			)
 
 	# -- フォーカス操作 ------------------------------------------------
 
@@ -305,6 +384,16 @@ class AtcoderApp(App[None]):
 		item = event.item
 		if isinstance(item, ProblemItem):
 			self.load_problem(item.summary)
+
+	def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+		if event.data_table is self.results:
+			self._show_test_details(event.cursor_row)
+
+	def _show_test_details(self, row: int) -> None:
+		problem = self.current_problem
+		test = self.results.test_at(row)
+		if problem is not None and test is not None:
+			self.statement.show_test_case(problem, test)
 
 	@work(exclusive=True, group="contest")
 	async def load_contest(self, contest_id: str) -> None:
